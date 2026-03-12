@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { LanguageCitySelector } from "./components/LandingPage";
+import { LandingPage } from "./components/LandingPage";
 import { StreetView } from "./components/StreetView";
 import { MicButton } from "./components/MicButton";
 import { ConversationLog } from "./components/ConversationLog";
@@ -85,7 +85,7 @@ export default function App() {
 
   // Landing screen
   if (!config || !city || !language) {
-    return <LanguageCitySelector onStart={handleStart} />;
+    return <LandingPage onStart={handleStart} />;
   }
 
   // Main session view

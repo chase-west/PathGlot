@@ -6,7 +6,7 @@ interface Props {
   onStart: (languageCode: string, cityId: string, guideName: string) => void;
 }
 
-export function LanguageCitySelector({ onStart }: Props) {
+export function LandingPage({ onStart }: Props) {
   const [selectedLanguage, setSelectedLanguage] = useState<Language | null>(
     null
   );
