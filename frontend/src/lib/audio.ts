@@ -100,7 +100,6 @@ export class AudioPlayer {
 
   stop() {
     this.nextStartTime = 0;
-    // Replace the context to instantly silence all scheduled sources
     this.ctx.close();
     this.ctx = new AudioContext({ sampleRate: PLAYBACK_SAMPLE_RATE });
   }
@@ -109,5 +108,10 @@ export class AudioPlayer {
     if (this.ctx.state === "suspended") {
       this.ctx.resume();
     }
+  }
+
+  /** True if scheduled audio is still playing or will play. */
+  get isPlaying(): boolean {
+    return this.ctx.currentTime < this.nextStartTime;
   }
 }

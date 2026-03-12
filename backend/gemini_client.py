@@ -174,20 +174,21 @@ class GeminiLiveSession:
                         print(f"[gemini recv] interrupted (turn {turn_num})")
                         await self.on_interrupted()
 
-                    # Turn complete
-                    if message.server_content.turn_complete:
-                        print(f"[gemini recv] turn_complete (turn {turn_num})")
-                        await self.on_audio_end()
-
-                    # Output transcript (agent speech → text)
+                    # Output transcript BEFORE turn_complete — if both arrive
+                    # in the same message, the transcript must be appended to
+                    # the current bubble before it gets sealed.
                     if message.server_content.output_transcription:
                         text = message.server_content.output_transcription.text
                         if text:
                             print(f"[gemini recv] agent: {text!r}")
                             await self.on_transcript("agent", text)
 
+                    # Turn complete (after transcript)
+                    if message.server_content.turn_complete:
+                        print(f"[gemini recv] turn_complete (turn {turn_num})")
+                        await self.on_audio_end()
+
                     # Input transcript — just log, don't send to client
-                    # (Gemini guesses the wrong language for input STT)
                     if message.server_content.input_transcription:
                         text = message.server_content.input_transcription.text
                         if text:

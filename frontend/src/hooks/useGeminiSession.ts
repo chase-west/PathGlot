@@ -5,6 +5,12 @@ import type { City } from "../lib/cities";
 const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string | undefined) || "http://localhost:8000";
 const BACKEND_WS_URL = BACKEND_URL.replace(/^http/, "ws");
 
+// BCP-47 locales for Web Speech API
+const SPEECH_LOCALES: Record<string, string> = {
+  es: "es-ES", fr: "fr-FR", de: "de-DE",
+  ja: "ja-JP", it: "it-IT", pt: "pt-BR",
+};
+
 export type SessionStatus =
   | "idle"
   | "connecting"
@@ -17,6 +23,7 @@ export interface ConversationTurn {
   role: "user" | "agent";
   text: string;
   timestamp: number;
+  pending?: boolean; // true while speech recognition is still interim
 }
 
 interface UseGeminiSessionOptions {
@@ -35,6 +42,9 @@ export function useGeminiSession({
   const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
   const [transcript, setTranscript] = useState<ConversationTurn[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Track whether the last turn is "sealed" (complete) so new fragments
+  // from the same role start a fresh bubble after turn_complete.
+  const turnSealedRef = useRef(true);
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioPlayerRef = useRef<AudioPlayer | null>(null);
@@ -42,6 +52,10 @@ export function useGeminiSession({
   const audioContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
+  // Ref-based agent speaking tracker accessible from onaudioprocess callback
+  const agentSpeakingRef = useRef(false);
 
   // Connect to backend WebSocket and start Gemini session
   const connect = useCallback(async () => {
@@ -82,26 +96,28 @@ export function useGeminiSession({
       case "audio":
         audioPlayerRef.current?.resume();
         audioPlayerRef.current?.enqueue(msg.data);
+        agentSpeakingRef.current = true;
         setIsAgentSpeaking(true);
         break;
 
       case "audio_end":
+        agentSpeakingRef.current = false;
         setIsAgentSpeaking(false);
+        turnSealedRef.current = true;
         break;
 
       case "interrupted":
-        // User barged in — kill buffered audio so the agent's old speech
-        // doesn't keep playing over the new response.
         audioPlayerRef.current?.stop();
+        agentSpeakingRef.current = false;
         setIsAgentSpeaking(false);
+        turnSealedRef.current = true;
         break;
 
       case "transcript": {
-        // Accumulate fragments into the current turn instead of creating
-        // a new bubble for every word Gemini streams.
         setTranscript((prev) => {
           const last = prev[prev.length - 1];
-          if (last && last.role === msg.role) {
+          // Append to current bubble only if same role AND turn not sealed
+          if (last && last.role === msg.role && !turnSealedRef.current) {
             const updated = [...prev];
             updated[updated.length - 1] = {
               ...last,
@@ -109,6 +125,8 @@ export function useGeminiSession({
             };
             return updated;
           }
+          // New bubble — mark turn as open
+          turnSealedRef.current = false;
           return [
             ...prev,
             {
@@ -165,12 +183,17 @@ export function useGeminiSession({
 
       processor.onaudioprocess = (e) => {
         if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-        // Browser echoCancellation handles feedback — always send mic audio so
-        // Gemini's VAD stays active across turns and barge-in works.
-        const base64 = float32ToBase64Pcm(e.inputBuffer.getChannelData(0));
-        wsRef.current.send(
-          JSON.stringify({ type: "audio", data: base64 })
-        );
+        const samples = e.inputBuffer.getChannelData(0);
+        // While agent is speaking, send silence to prevent echo feedback
+        // but keep the audio stream alive so Gemini's VAD stays primed.
+        if (agentSpeakingRef.current) {
+          const silence = new Float32Array(samples.length); // all zeros
+          const base64 = float32ToBase64Pcm(silence);
+          wsRef.current.send(JSON.stringify({ type: "audio", data: base64 }));
+        } else {
+          const base64 = float32ToBase64Pcm(samples);
+          wsRef.current.send(JSON.stringify({ type: "audio", data: base64 }));
+        }
       };
 
       // Connect through a muted GainNode — Chrome requires a path to destination
@@ -181,6 +204,88 @@ export function useGeminiSession({
       source.connect(processor);
       processor.connect(muteNode);
       muteNode.connect(ctx.destination);
+
+      // Client-side speech recognition for user transcript
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = SPEECH_LOCALES[languageCode] || "es-ES";
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        let interimBubbleId: string | null = null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        recognition.onresult = (e: any) => {
+          // Build full text from all results in this recognition session
+          let interim = "";
+          let final = "";
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            const text = e.results[i][0].transcript;
+            if (e.results[i].isFinal) {
+              final += text;
+            } else {
+              interim += text;
+            }
+          }
+
+          if (final.trim()) {
+            // Finalize: replace pending bubble or create new one
+            const fText = final.trim();
+            setTranscript((prev) => {
+              if (interimBubbleId) {
+                // Replace the interim bubble with final text
+                return prev.map((t) =>
+                  t.id === interimBubbleId
+                    ? { ...t, text: fText, pending: false }
+                    : t
+                );
+              }
+              turnSealedRef.current = false;
+              return [...prev, {
+                id: crypto.randomUUID(),
+                role: "user" as const,
+                text: fText,
+                timestamp: Date.now(),
+              }];
+            });
+            interimBubbleId = null;
+            turnSealedRef.current = true;
+          }
+
+          if (interim.trim()) {
+            const iText = interim.trim();
+            setTranscript((prev) => {
+              if (interimBubbleId) {
+                // Update existing interim bubble
+                return prev.map((t) =>
+                  t.id === interimBubbleId
+                    ? { ...t, text: iText }
+                    : t
+                );
+              }
+              // Create new interim bubble
+              const id = crypto.randomUUID();
+              interimBubbleId = id;
+              turnSealedRef.current = false;
+              return [...prev, {
+                id,
+                role: "user" as const,
+                text: iText,
+                timestamp: Date.now(),
+                pending: true,
+              }];
+            });
+          }
+        };
+        recognition.onend = () => {
+          // Auto-restart if mic is still active
+          if (micStreamRef.current) {
+            try { recognition.start(); } catch { /* already started */ }
+          }
+        };
+        recognition.start();
+        recognitionRef.current = recognition;
+      }
+
       setIsMicActive(true);
     } catch (err) {
       setError(
@@ -191,6 +296,8 @@ export function useGeminiSession({
 
   // Stop microphone capture
   const stopMic = useCallback(() => {
+    recognitionRef.current?.abort();
+    recognitionRef.current = null;
     processorRef.current?.disconnect();
     sourceRef.current?.disconnect();
     micStreamRef.current?.getTracks().forEach((t) => t.stop());
