@@ -75,48 +75,33 @@ export function resample(
  */
 export class AudioPlayer {
   private ctx: AudioContext;
-  private queue: AudioBuffer[] = [];
-  private playing = false;
   private nextStartTime = 0;
 
   constructor() {
     this.ctx = new AudioContext({ sampleRate: PLAYBACK_SAMPLE_RATE });
   }
 
+  /** Schedule a PCM chunk for gapless playback immediately. */
   enqueue(base64Pcm: string) {
     const float32 = base64PcmToFloat32(base64Pcm);
-    const buffer = this.ctx.createBuffer(
-      1,
-      float32.length,
-      PLAYBACK_SAMPLE_RATE
-    );
+    const buffer = this.ctx.createBuffer(1, float32.length, PLAYBACK_SAMPLE_RATE);
     buffer.getChannelData(0).set(float32);
-    this.queue.push(buffer);
-    if (!this.playing) this.playNext();
-  }
-
-  private playNext() {
-    const buffer = this.queue.shift();
-    if (!buffer) {
-      this.playing = false;
-      return;
-    }
-    this.playing = true;
-    const source = this.ctx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(this.ctx.destination);
 
     const now = this.ctx.currentTime;
     const startTime = Math.max(now, this.nextStartTime);
+
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(this.ctx.destination);
     source.start(startTime);
+
     this.nextStartTime = startTime + buffer.duration;
-    source.onended = () => this.playNext();
   }
 
   stop() {
-    this.queue = [];
-    this.playing = false;
     this.nextStartTime = 0;
+    this.ctx.close();
+    this.ctx = new AudioContext({ sampleRate: PLAYBACK_SAMPLE_RATE });
   }
 
   resume() {
@@ -125,7 +110,8 @@ export class AudioPlayer {
     }
   }
 
-  get isPlaying() {
-    return this.playing;
+  /** True if scheduled audio is still playing or will play. */
+  get isPlaying(): boolean {
+    return this.ctx.currentTime < this.nextStartTime;
   }
 }

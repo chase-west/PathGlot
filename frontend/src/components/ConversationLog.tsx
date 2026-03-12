@@ -51,6 +51,7 @@ export function ConversationLog({ transcript, isOpen, onClose }: Props) {
                       ? "bg-brand-500/80 text-white rounded-br-sm"
                       : "bg-white/10 text-slate-200 rounded-bl-sm"
                   }
+                  ${turn.pending ? "opacity-60 italic" : ""}
                 `}
               >
                 {turn.text}

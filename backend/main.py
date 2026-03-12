@@ -88,12 +88,19 @@ async def session_endpoint(
             await websocket.send_text(
                 json.dumps({"type": "audio", "data": base64_pcm})
             )
-        except Exception:
-            pass
+            print(f"[ws] sent audio chunk: {len(base64_pcm)} chars")
+        except Exception as e:
+            print(f"[ws] ERROR sending audio: {e}")
 
     async def on_audio_end():
         try:
             await websocket.send_text(json.dumps({"type": "audio_end"}))
+        except Exception:
+            pass
+
+    async def on_interrupted():
+        try:
+            await websocket.send_text(json.dumps({"type": "interrupted"}))
         except Exception:
             pass
 
@@ -118,6 +125,7 @@ async def session_endpoint(
         language_code=lang,
         on_audio=on_audio,
         on_audio_end=on_audio_end,
+        on_interrupted=on_interrupted,
         on_transcript=on_transcript,
         on_error=on_error,
     )
@@ -135,6 +143,7 @@ async def session_endpoint(
         return
 
     last_position: tuple[float, float] | None = None
+    mic_chunk_count = 0
 
     try:
         while True:
@@ -144,6 +153,9 @@ async def session_endpoint(
             match msg.get("type"):
                 case "audio":
                     # Client audio chunk → Gemini
+                    mic_chunk_count += 1
+                    if mic_chunk_count % 50 == 1:
+                        print(f"[ws recv] mic chunk #{mic_chunk_count}, len={len(msg['data'])}")
                     await gemini.send_audio(msg["data"])
 
                 case "position":
