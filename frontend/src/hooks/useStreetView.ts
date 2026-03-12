@@ -64,7 +64,6 @@ export function useStreetView({ city, onPositionChange }: UseStreetViewOptions) 
         if (cancelled || !container) return;
 
         const panorama = new google.maps.StreetViewPanorama(container, {
-          position: { lat: city.lat, lng: city.lng },
           pov: { heading: city.heading, pitch: city.pitch },
           zoom: 1,
           addressControl: false,
@@ -77,13 +76,30 @@ export function useStreetView({ city, onPositionChange }: UseStreetViewOptions) 
 
         panoramaRef.current = panorama;
 
+        // Find the nearest outdoor panorama before setting position.
+        // This prevents spawning inside buildings/photospheres.
+        const sv = new google.maps.StreetViewService();
+        sv.getPanorama(
+          {
+            location: { lat: city.lat, lng: city.lng },
+            radius: 200,
+            preference: google.maps.StreetViewPreference.NEAREST,
+            source: google.maps.StreetViewSource.OUTDOOR,
+          } as google.maps.StreetViewLocationRequest,
+          (data, status) => {
+            if (cancelled) return;
+            if (status === google.maps.StreetViewStatus.OK && data?.location?.pano) {
+              panorama.setPano(data.location.pano);
+            } else {
+              // Fallback to raw coordinates if no outdoor panorama found
+              panorama.setPosition({ lat: city.lat, lng: city.lng });
+            }
+          }
+        );
+
         // Only reveal the panorama once Street View confirms imagery loaded.
-        // Calling setIsLoaded(true) immediately (before this event) causes a
-        // black flash while tiles are still fetching, or a permanently black
-        // screen if the location has no coverage at all.
         panorama.addListener("status_changed", () => {
           if (cancelled) return;
-          // getStatus() returns "OK" | "ZERO_RESULTS" | "UNKNOWN_ERROR"
           if (panorama.getStatus() === "OK") {
             setIsLoaded(true);
           } else {
