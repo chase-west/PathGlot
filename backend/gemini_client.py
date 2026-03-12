@@ -138,6 +138,14 @@ class GeminiLiveSession:
             async with self._client.aio.live.connect(
                 model=GEMINI_MODEL, config=config
             ) as session:
+                # Send initial prompt to trigger the greeting immediately
+                await session.send_client_content(
+                    turns=genai_types.Content(
+                        role="user",
+                        parts=[genai_types.Part(text="[Session started. Introduce yourself now.]")],
+                    ),
+                    turn_complete=True,
+                )
                 # Run sender and receiver concurrently
                 await asyncio.gather(
                     self._send_loop(session),

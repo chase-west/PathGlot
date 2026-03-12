@@ -72,7 +72,8 @@ export function MicButton({
 
       {/* Status label */}
       <span className="text-xs text-slate-400 text-center">
-        {!isConnected && "Disconnected"}
+        {!isConnected && sessionStatus === "connecting" && "Connecting…"}
+        {!isConnected && sessionStatus !== "connecting" && "Disconnected"}
         {isConnected && !isMicActive && !isAgentSpeaking && "Tap to speak"}
         {isMicActive && "Listening…"}
         {isAgentSpeaking && !isMicActive && "Agent speaking…"}

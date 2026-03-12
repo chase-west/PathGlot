@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { LandingPage } from "./components/LandingPage";
 import { StreetView, type StreetViewHandle } from "./components/StreetView";
 import { MicButton } from "./components/MicButton";
@@ -68,6 +68,23 @@ export default function App() {
     setConfig({ languageCode, cityId, guideName });
   }
 
+  // Auto-connect to Gemini and start mic when entering session
+  const autoConnectConfigRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!config) {
+      autoConnectConfigRef.current = null;
+      return;
+    }
+    const configKey = `${config.languageCode}:${config.cityId}:${config.guideName}`;
+    const canConnect = session.status === "idle" || session.status === "closed";
+    if (canConnect && autoConnectConfigRef.current !== configKey) {
+      autoConnectConfigRef.current = configKey;
+      session.connect().then(() => {
+        session.startMic();
+      });
+    }
+  }, [config, session.status]);
+
   function handleEnd() {
     session.disconnect();
     setConfig(null);
@@ -125,10 +142,10 @@ export default function App() {
           {/* Connection status pill */}
           <StatusPill status={session.status} />
 
-          {/* Connect button (if not connected) */}
-          {(session.status === "idle" || session.status === "closed" || session.status === "error") && (
+          {/* Reconnect button (only after disconnect/error) */}
+          {(session.status === "closed" || session.status === "error") && (
             <button onClick={handleConnect} className="btn-primary text-sm py-1.5 px-4">
-              Connect
+              Reconnect
             </button>
           )}
 
