@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { LandingPage } from "./components/LandingPage";
-import { StreetView } from "./components/StreetView";
+import { StreetView, type StreetViewHandle } from "./components/StreetView";
 import { MicButton } from "./components/MicButton";
 import { ConversationLog } from "./components/ConversationLog";
 import { useGeminiSession } from "./hooks/useGeminiSession";
@@ -25,12 +25,20 @@ export default function App() {
     ? getCity(config.languageCode, config.cityId)
     : undefined;
 
+  const streetViewRef = useRef<StreetViewHandle>(null);
+
+  const handleNavigate = useCallback((placeName: string, lat: number, lng: number) => {
+    console.log(`[navigate] Moving to ${placeName} (${lat}, ${lng})`);
+    streetViewRef.current?.moveTo(lat, lng);
+  }, []);
+
   const session = useGeminiSession(
     config
       ? {
           languageCode: config.languageCode,
           city: city!,
           guideName: config.guideName,
+          onNavigate: handleNavigate,
         }
       : { languageCode: "es", city: getCity("es", "madrid")!, guideName: "Carlos" }
   );
@@ -144,7 +152,7 @@ export default function App() {
       {/* Main content */}
       <div className="flex-1 relative overflow-hidden">
         {/* Street View */}
-        <StreetView city={city} onPositionChange={handlePositionChange} />
+        <StreetView ref={streetViewRef} city={city} onPositionChange={handlePositionChange} />
 
         {/* Overlay controls */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">

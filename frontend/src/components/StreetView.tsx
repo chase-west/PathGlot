@@ -1,16 +1,23 @@
 import { useStreetView, type StreetViewPosition } from "../hooks/useStreetView";
 import type { City } from "../lib/cities";
+import { useImperativeHandle, forwardRef } from "react";
+
+export interface StreetViewHandle {
+  moveTo: (lat: number, lng: number) => void;
+}
 
 interface Props {
   city: City;
   onPositionChange?: (position: StreetViewPosition) => void;
 }
 
-export function StreetView({ city, onPositionChange }: Props) {
-  const { containerRef, isLoaded, error } = useStreetView({
+export const StreetView = forwardRef<StreetViewHandle, Props>(function StreetView({ city, onPositionChange }, ref) {
+  const { containerRef, isLoaded, error, moveTo } = useStreetView({
     city,
     onPositionChange,
   });
+
+  useImperativeHandle(ref, () => ({ moveTo }), [moveTo]);
 
   if (error) {
     return (
@@ -36,4 +43,4 @@ export function StreetView({ city, onPositionChange }: Props) {
       )}
     </div>
   );
-}
+});

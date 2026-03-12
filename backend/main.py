@@ -24,7 +24,7 @@ from places_client import nearby_search, haversine_distance
 from context_builder import build_location_update
 from language_config import build_system_prompt
 
-MOVEMENT_THRESHOLD_METERS = 50  # minimum move to trigger Places API call
+MOVEMENT_THRESHOLD_METERS = 30  # minimum move to trigger Places API call (~100ft)
 
 app = FastAPI(title="PathGlot Backend")
 
@@ -120,6 +120,20 @@ async def session_endpoint(
         except Exception:
             pass
 
+    async def on_navigate(place_name: str, lat: float, lng: float):
+        try:
+            await websocket.send_text(
+                json.dumps({
+                    "type": "navigate",
+                    "place_name": place_name,
+                    "lat": lat,
+                    "lng": lng,
+                })
+            )
+            print(f"[ws] navigate to {place_name} ({lat}, {lng})")
+        except Exception as e:
+            print(f"[ws] ERROR sending navigate: {e}")
+
     gemini = GeminiLiveSession(
         system_prompt=system_prompt,
         language_code=lang,
@@ -128,6 +142,7 @@ async def session_endpoint(
         on_interrupted=on_interrupted,
         on_transcript=on_transcript,
         on_error=on_error,
+        on_navigate=on_navigate,
     )
 
     try:

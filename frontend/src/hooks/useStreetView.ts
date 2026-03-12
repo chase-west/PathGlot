@@ -73,7 +73,9 @@ export function useStreetView({ city, onPositionChange }: UseStreetViewOptions) 
           motionTrackingControl: false,
           showRoadLabels: true,
           clickToGo: true,
-        });
+          // Prefer outdoor-only imagery to keep user on streets
+          source: google.maps.StreetViewSource.OUTDOOR,
+        } as google.maps.StreetViewPanoramaOptions);
 
         panoramaRef.current = panorama;
 

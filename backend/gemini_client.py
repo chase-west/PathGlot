@@ -9,7 +9,37 @@ from google import genai
 from google.genai import types as genai_types
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = "gemini-2.5-flash-native-audio-latest"
+# Use the December 2025 preview — Google's recommended model for Live API.
+# v1alpha API version unlocks affective dialog and proactive audio.
+GEMINI_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
+
+
+NAVIGATE_TOOL = genai_types.FunctionDeclaration(
+    name="navigate_to_place",
+    description=(
+        "Move the user's Street View camera to a specific place. "
+        "Use this when the user wants to see a place, or when you suggest visiting somewhere nearby. "
+        "You MUST provide the latitude and longitude coordinates from the location update data."
+    ),
+    parameters_json_schema={
+        "type": "object",
+        "properties": {
+            "place_name": {
+                "type": "string",
+                "description": "Name of the place to navigate to",
+            },
+            "latitude": {
+                "type": "number",
+                "description": "Latitude coordinate of the place",
+            },
+            "longitude": {
+                "type": "number",
+                "description": "Longitude coordinate of the place",
+            },
+        },
+        "required": ["place_name", "latitude", "longitude"],
+    },
+)
 
 
 class GeminiLiveSession:
@@ -22,6 +52,7 @@ class GeminiLiveSession:
         on_interrupted: Callable[[], Awaitable[None]],
         on_transcript: Callable[[str, str], Awaitable[None]],
         on_error: Callable[[str], Awaitable[None]],
+        on_navigate: Callable[[str, float, float], Awaitable[None]] | None = None,
     ):
         self.system_prompt = system_prompt
         self.language_code = language_code
@@ -30,8 +61,13 @@ class GeminiLiveSession:
         self.on_interrupted = on_interrupted
         self.on_transcript = on_transcript
         self.on_error = on_error
+        self.on_navigate = on_navigate
 
-        self._client = genai.Client(api_key=GEMINI_API_KEY)
+        # v1alpha required for enable_affective_dialog and proactivity
+        self._client = genai.Client(
+            api_key=GEMINI_API_KEY,
+            http_options={"api_version": "v1alpha"},
+        )
         self._audio_queue: asyncio.Queue[str | None] = asyncio.Queue()
         self._context_queue: asyncio.Queue[str | None] = asyncio.Queue()
         self._task: asyncio.Task | None = None
@@ -71,6 +107,7 @@ class GeminiLiveSession:
         config = genai_types.LiveConnectConfig(
             response_modalities=["AUDIO"],
             system_instruction=self.system_prompt,
+            tools=[genai_types.Tool(function_declarations=[NAVIGATE_TOOL])],
             speech_config=genai_types.SpeechConfig(
                 voice_config=genai_types.VoiceConfig(
                     prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(
@@ -78,15 +115,22 @@ class GeminiLiveSession:
                     )
                 )
             ),
+            input_audio_transcription=genai_types.AudioTranscriptionConfig(),
             output_audio_transcription=genai_types.AudioTranscriptionConfig(),
-            # Disable thinking — when active it generates text/thought responses
-            # instead of audio, ignoring response_modalities=["AUDIO"]
-            thinking_config=genai_types.ThinkingConfig(thinking_budget=0),
+            # Affective dialog — emotion-aware, more human-like responses
+            enable_affective_dialog=True,
+            # Proactive audio — model can initiate when it has something relevant
+            proactivity=genai_types.ProactivityConfig(
+                proactive_audio=True,
+            ),
             # Ensure VAD stays active across turns so the model keeps listening
             # after each response instead of waiting for explicit turn signals.
             realtime_input_config=genai_types.RealtimeInputConfig(
                 automatic_activity_detection=genai_types.AutomaticActivityDetection(
                     disabled=False,
+                    # LOW sensitivity = wait longer before assuming user is done
+                    # speaking. Prevents interrupt storms.
+                    end_of_speech_sensitivity=genai_types.EndSensitivity.END_SENSITIVITY_LOW,
                 ),
             ),
         )
@@ -168,6 +212,33 @@ class GeminiLiveSession:
                     audio_b64 = base64.b64encode(message.data).decode()
                     await self.on_audio(audio_b64)
 
+                # Tool call — Gemini wants to invoke a function
+                if message.tool_call:
+                    for fc in message.tool_call.function_calls:
+                        print(f"[gemini recv] tool_call: {fc.name}({fc.args})")
+                        if fc.name == "navigate_to_place" and self.on_navigate:
+                            place_name = fc.args.get("place_name", "")
+                            lat = fc.args.get("latitude", 0.0)
+                            lng = fc.args.get("longitude", 0.0)
+                            await self.on_navigate(place_name, lat, lng)
+                            # Respond to Gemini so it knows navigation happened
+                            await session.send_tool_response(
+                                function_responses=genai_types.FunctionResponse(
+                                    name="navigate_to_place",
+                                    response={"status": "success", "message": f"Navigated to {place_name}"},
+                                    id=fc.id,
+                                )
+                            )
+                        else:
+                            # Unknown tool — respond with error
+                            await session.send_tool_response(
+                                function_responses=genai_types.FunctionResponse(
+                                    name=fc.name,
+                                    response={"error": f"Unknown function: {fc.name}"},
+                                    id=fc.id,
+                                )
+                            )
+
                 if message.server_content:
                     # User interrupted the agent — stop playback immediately
                     if message.server_content.interrupted:
@@ -188,8 +259,9 @@ class GeminiLiveSession:
                         print(f"[gemini recv] turn_complete (turn {turn_num})")
                         await self.on_audio_end()
 
-                    # Input transcript — just log, don't send to client
+                    # Input transcript
                     if message.server_content.input_transcription:
                         text = message.server_content.input_transcription.text
                         if text:
                             print(f"[gemini recv] user: {text!r}")
+                            await self.on_transcript("user", text)
