@@ -24,12 +24,14 @@ interface UseGeminiSessionOptions {
   languageCode: string;
   city: City;
   guideName: string;
+  onNavigate?: (placeName: string, lat: number, lng: number) => void;
 }
 
 export function useGeminiSession({
   languageCode,
   city,
   guideName,
+  onNavigate,
 }: UseGeminiSessionOptions) {
   const [status, setStatus] = useState<SessionStatus>("idle");
   const [isMicActive, setIsMicActive] = useState(false);
@@ -48,6 +50,10 @@ export function useGeminiSession({
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   // Ref-based agent speaking tracker accessible from onaudioprocess callback
   const agentSpeakingRef = useRef(false);
+  const onNavigateRef = useRef(onNavigate);
+  useEffect(() => {
+    onNavigateRef.current = onNavigate;
+  }, [onNavigate]);
 
   // Connect to backend WebSocket and start Gemini session
   const connect = useCallback(async () => {
@@ -134,6 +140,11 @@ export function useGeminiSession({
 
       case "error":
         setError(msg.message);
+        break;
+
+      case "navigate":
+        console.log("[session] navigate to", msg.place_name, msg.lat, msg.lng);
+        onNavigateRef.current?.(msg.place_name, msg.lat, msg.lng);
         break;
 
       case "status":
@@ -290,10 +301,18 @@ interface StatusMessage {
   message: string;
 }
 
+interface NavigateMessage {
+  type: "navigate";
+  place_name: string;
+  lat: number;
+  lng: number;
+}
+
 type BackendMessage =
   | AudioMessage
   | AudioEndMessage
   | InterruptedMessage
   | TranscriptMessage
   | ErrorMessage
-  | StatusMessage;
+  | StatusMessage
+  | NavigateMessage;

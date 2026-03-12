@@ -29,7 +29,7 @@ async def nearby_search(
     lat: float,
     lng: float,
     language_code: str = "en",
-    radius_meters: int = 200,
+    radius_meters: int = 50,
     max_results: int = 10,
 ) -> list[dict[str, Any]]:
     """
@@ -69,12 +69,15 @@ async def nearby_search(
 
     places = []
     for p in data.get("places", []):
+        loc = p.get("location", {})
         place = {
             "name": p.get("displayName", {}).get("text", ""),
             "address": p.get("formattedAddress", ""),
             "types": p.get("types", [])[:3],
             "rating": p.get("rating"),
             "summary": p.get("editorialSummary", {}).get("text", ""),
+            "lat": loc.get("latitude"),
+            "lng": loc.get("longitude"),
         }
         if place["name"]:
             places.append(place)
