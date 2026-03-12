@@ -4,7 +4,7 @@ export interface City {
   country: string;
   lat: number;
   lng: number;
-  heading: number; // initial Street View camera heading
+  heading: number; // initial Street View camera heading (0–360)
   pitch: number;
 }
 
@@ -16,6 +16,20 @@ export interface Language {
   guideNames: string[];
   cities: City[];
 }
+
+// ─── Coordinate guidelines ────────────────────────────────────────────────────
+// Coordinates MUST land on a drivable road or a footpath Google has driven.
+// The hook uses status_changed to detect "ZERO_RESULTS" and show an error, so
+// a bad coordinate will give users a clear message instead of a black screen.
+//
+// Rules:
+//  ✓ Use named boulevards, avenues, or main streets
+//  ✗ Avoid plazas / pedestrian squares / park interiors / ZTL zones
+//  ✗ Avoid the exact centre of monuments / tourist attractions
+//
+// To verify a coordinate: paste "lat,lng" into Google Maps → click Street View
+// pegman → if imagery appears you're good.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const LANGUAGES: Language[] = [
   {
@@ -29,8 +43,9 @@ export const LANGUAGES: Language[] = [
         id: "madrid",
         name: "Madrid",
         country: "Spain",
-        lat: 40.4153,
-        lng: -3.7074,
+        // Gran Vía — Madrid's main commercial boulevard
+        lat: 40.4200,
+        lng: -3.7027,
         heading: 90,
         pitch: 0,
       },
@@ -38,8 +53,9 @@ export const LANGUAGES: Language[] = [
         id: "barcelona",
         name: "Barcelona",
         country: "Spain",
-        lat: 41.3851,
-        lng: 2.1734,
+        // Passeig de Gràcia — Barcelona's famous modernist boulevard
+        lat: 41.3917,
+        lng: 2.1649,
         heading: 180,
         pitch: 0,
       },
@@ -47,9 +63,10 @@ export const LANGUAGES: Language[] = [
         id: "buenos-aires",
         name: "Buenos Aires",
         country: "Argentina",
-        lat: -34.6037,
-        lng: -58.3816,
-        heading: 45,
+        // Avenida de Mayo — main avenue linking Casa Rosada to Congress
+        lat: -34.6083,
+        lng: -58.3712,
+        heading: 90,
         pitch: 0,
       },
     ],
@@ -65,27 +82,30 @@ export const LANGUAGES: Language[] = [
         id: "paris",
         name: "Paris",
         country: "France",
-        lat: 48.8584,
-        lng: 2.2945,
-        heading: 90,
+        // Avenue des Champs-Élysées — Paris's most famous road, full coverage
+        lat: 48.8698,
+        lng: 2.3082,
+        heading: 270,
         pitch: 0,
       },
       {
         id: "montmartre",
         name: "Montmartre",
         country: "France",
-        lat: 48.8867,
-        lng: 2.3431,
-        heading: 120,
+        // Rue Lepic — the famous winding road up Montmartre hill, well covered
+        lat: 48.8843,
+        lng: 2.3369,
+        heading: 150,
         pitch: 5,
       },
       {
         id: "montreal",
         name: "Montréal",
         country: "Canada",
-        lat: 45.5017,
-        lng: -73.5673,
-        heading: 60,
+        // Rue Sainte-Catherine Ouest — main downtown commercial street
+        lat: 45.5080,
+        lng: -73.5690,
+        heading: 90,
         pitch: 0,
       },
     ],
@@ -101,6 +121,7 @@ export const LANGUAGES: Language[] = [
         id: "berlin",
         name: "Berlin",
         country: "Germany",
+        // Unter den Linden — Berlin's most iconic boulevard
         lat: 52.5163,
         lng: 13.3777,
         heading: 270,
@@ -110,8 +131,9 @@ export const LANGUAGES: Language[] = [
         id: "vienna",
         name: "Vienna",
         country: "Austria",
-        lat: 48.2082,
-        lng: 16.3738,
+        // Ringstrasse near the State Opera — major boulevard, full coverage
+        lat: 48.2036,
+        lng: 16.3695,
         heading: 90,
         pitch: 0,
       },
@@ -128,6 +150,7 @@ export const LANGUAGES: Language[] = [
         id: "tokyo-shibuya",
         name: "Tokyo (Shibuya)",
         country: "Japan",
+        // Shibuya — on the road approaching the famous crossing
         lat: 35.6596,
         lng: 139.7006,
         heading: 0,
@@ -137,8 +160,9 @@ export const LANGUAGES: Language[] = [
         id: "osaka",
         name: "Osaka",
         country: "Japan",
-        lat: 34.6937,
-        lng: 135.5023,
+        // Midosuji Avenue — Osaka's main north-south boulevard
+        lat: 34.6789,
+        lng: 135.5054,
         heading: 180,
         pitch: 0,
       },
@@ -155,17 +179,19 @@ export const LANGUAGES: Language[] = [
         id: "rome",
         name: "Rome",
         country: "Italy",
-        lat: 41.8902,
-        lng: 12.4922,
-        heading: 180,
+        // Via Labicana — drivable road running past the Colosseum
+        lat: 41.8895,
+        lng: 12.4968,
+        heading: 270,
         pitch: 0,
       },
       {
         id: "florence",
         name: "Florence",
         country: "Italy",
-        lat: 43.7696,
-        lng: 11.2558,
+        // Lungarno Torrigiani — riverside road along the Arno, outside ZTL
+        lat: 43.7678,
+        lng: 11.2584,
         heading: 90,
         pitch: 0,
       },
@@ -182,18 +208,20 @@ export const LANGUAGES: Language[] = [
         id: "lisbon",
         name: "Lisbon",
         country: "Portugal",
-        lat: 38.7223,
-        lng: -9.1393,
-        heading: 90,
+        // Avenida da Liberdade — Lisbon's grand central boulevard
+        lat: 38.7165,
+        lng: -9.1427,
+        heading: 0,
         pitch: 0,
       },
       {
         id: "sao-paulo",
         name: "São Paulo",
         country: "Brazil",
-        lat: -23.5505,
-        lng: -46.6333,
-        heading: 45,
+        // Avenida Paulista — São Paulo's main financial avenue
+        lat: -23.5613,
+        lng: -46.6565,
+        heading: 90,
         pitch: 0,
       },
     ],

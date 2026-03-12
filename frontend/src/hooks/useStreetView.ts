@@ -77,6 +77,23 @@ export function useStreetView({ city, onPositionChange }: UseStreetViewOptions) 
 
         panoramaRef.current = panorama;
 
+        // Only reveal the panorama once Street View confirms imagery loaded.
+        // Calling setIsLoaded(true) immediately (before this event) causes a
+        // black flash while tiles are still fetching, or a permanently black
+        // screen if the location has no coverage at all.
+        panorama.addListener("status_changed", () => {
+          if (cancelled) return;
+          // getStatus() returns "OK" | "ZERO_RESULTS" | "UNKNOWN_ERROR"
+          if (panorama.getStatus() === "OK") {
+            setIsLoaded(true);
+          } else {
+            setError(
+              `No Street View imagery near ${city.name}. ` +
+              `Check the coordinates in cities.ts are on a drivable street.`
+            );
+          }
+        });
+
         panorama.addListener("position_changed", () => {
           const pos = panorama.getPosition();
           const pov = panorama.getPov();
@@ -90,8 +107,6 @@ export function useStreetView({ city, onPositionChange }: UseStreetViewOptions) 
             });
           }
         });
-
-        setIsLoaded(true);
       })
       .catch((err) => {
         console.error("Maps API failed to load:", err);
@@ -101,7 +116,7 @@ export function useStreetView({ city, onPositionChange }: UseStreetViewOptions) 
     return () => {
       cancelled = true;
     };
-  }, [city.lat, city.lng, city.heading, city.pitch]);
+  }, [city.lat, city.lng, city.heading, city.pitch, city.name]);
 
   const moveTo = useCallback((lat: number, lng: number) => {
     panoramaRef.current?.setPosition({ lat, lng });
