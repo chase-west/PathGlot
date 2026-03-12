@@ -9,7 +9,9 @@ from google import genai
 from google.genai import types as genai_types
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = "gemini-2.5-flash-native-audio-latest"
+# Use the December 2025 preview — Google's recommended model for Live API.
+# v1alpha API version unlocks affective dialog and proactive audio.
+GEMINI_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
 
 
 class GeminiLiveSession:
@@ -31,7 +33,11 @@ class GeminiLiveSession:
         self.on_transcript = on_transcript
         self.on_error = on_error
 
-        self._client = genai.Client(api_key=GEMINI_API_KEY)
+        # v1alpha required for enable_affective_dialog and proactivity
+        self._client = genai.Client(
+            api_key=GEMINI_API_KEY,
+            http_options={"api_version": "v1alpha"},
+        )
         self._audio_queue: asyncio.Queue[str | None] = asyncio.Queue()
         self._context_queue: asyncio.Queue[str | None] = asyncio.Queue()
         self._task: asyncio.Task | None = None
@@ -78,15 +84,22 @@ class GeminiLiveSession:
                     )
                 )
             ),
+            input_audio_transcription=genai_types.AudioTranscriptionConfig(),
             output_audio_transcription=genai_types.AudioTranscriptionConfig(),
-            # Disable thinking — when active it generates text/thought responses
-            # instead of audio, ignoring response_modalities=["AUDIO"]
-            thinking_config=genai_types.ThinkingConfig(thinking_budget=0),
+            # Affective dialog — emotion-aware, more human-like responses
+            enable_affective_dialog=True,
+            # Proactive audio — model can initiate when it has something relevant
+            proactivity=genai_types.ProactivityConfig(
+                proactive_audio=True,
+            ),
             # Ensure VAD stays active across turns so the model keeps listening
             # after each response instead of waiting for explicit turn signals.
             realtime_input_config=genai_types.RealtimeInputConfig(
                 automatic_activity_detection=genai_types.AutomaticActivityDetection(
                     disabled=False,
+                    # LOW sensitivity = wait longer before assuming user is done
+                    # speaking. Prevents interrupt storms.
+                    end_of_speech_sensitivity=genai_types.EndSensitivity.END_SENSITIVITY_LOW,
                 ),
             ),
         )
@@ -188,8 +201,9 @@ class GeminiLiveSession:
                         print(f"[gemini recv] turn_complete (turn {turn_num})")
                         await self.on_audio_end()
 
-                    # Input transcript — just log, don't send to client
+                    # Input transcript
                     if message.server_content.input_transcription:
                         text = message.server_content.input_transcription.text
                         if text:
                             print(f"[gemini recv] user: {text!r}")
+                            await self.on_transcript("user", text)

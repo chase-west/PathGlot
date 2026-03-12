@@ -43,7 +43,7 @@ Backend (FastAPI, Cloud Run)
   ├── Context manager (injects location into Gemini session)
   └── Gemini Live WebSocket client
 
-Gemini Live API (gemini-live-2.5-flash-native-audio)
+Gemini Live API (gemini-2.5-flash-native-audio-preview-12-2025, v1alpha)
 ```
 
 ## Key Design Decisions
