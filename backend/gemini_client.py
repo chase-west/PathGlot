@@ -1,21 +1,15 @@
-"""Gemini Live session manager.
-
-Wraps the google-genai Live API to:
-  - Start a session with a system prompt
-  - Relay audio chunks to/from the session
-  - Inject context messages mid-session
-  - Emit audio output and transcript events via callbacks
-"""
+"""Gemini Live session manager."""
 
 import asyncio
+import base64
 import os
-from typing import Callable, Awaitable, Any
+from typing import Callable, Awaitable
 
 from google import genai
 from google.genai import types as genai_types
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = "gemini-live-2.5-flash-native-audio"
+GEMINI_MODEL = "gemini-2.5-flash-native-audio-latest"
 
 
 class GeminiLiveSession:
@@ -36,12 +30,37 @@ class GeminiLiveSession:
         self.on_error = on_error
 
         self._client = genai.Client(api_key=GEMINI_API_KEY)
-        self._session: Any = None
-        self._receive_task: asyncio.Task | None = None
+        self._audio_queue: asyncio.Queue[str | None] = asyncio.Queue()
+        self._context_queue: asyncio.Queue[str | None] = asyncio.Queue()
+        self._task: asyncio.Task | None = None
         self._closed = False
 
     async def start(self) -> None:
-        """Open the Gemini Live session."""
+        """Start the session in a background task."""
+        self._task = asyncio.create_task(self._run())
+        # Give it a moment to connect before returning
+        await asyncio.sleep(0.5)
+
+    async def send_audio(self, base64_pcm: str) -> None:
+        if not self._closed:
+            await self._audio_queue.put(base64_pcm)
+
+    async def send_context(self, context_text: str) -> None:
+        if not self._closed:
+            await self._context_queue.put(context_text)
+
+    async def close(self) -> None:
+        self._closed = True
+        await self._audio_queue.put(None)   # sentinel to unblock sender
+        await self._context_queue.put(None)
+        if self._task:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+
+    async def _run(self) -> None:
         from language_config import LANGUAGE_CONFIG
 
         lang_cfg = LANGUAGE_CONFIG.get(self.language_code, LANGUAGE_CONFIG["es"])
@@ -49,10 +68,7 @@ class GeminiLiveSession:
 
         config = genai_types.LiveConnectConfig(
             response_modalities=["AUDIO"],
-            system_instruction=genai_types.Content(
-                parts=[genai_types.Part(text=self.system_prompt)],
-                role="user",
-            ),
+            system_instruction=self.system_prompt,
             speech_config=genai_types.SpeechConfig(
                 voice_config=genai_types.VoiceConfig(
                     prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(
@@ -60,86 +76,82 @@ class GeminiLiveSession:
                     )
                 )
             ),
+            input_audio_transcription=genai_types.AudioTranscriptionConfig(),
+            output_audio_transcription=genai_types.AudioTranscriptionConfig(),
         )
 
-        self._session = await self._client.aio.live.connect(
-            model=GEMINI_MODEL,
-            config=config,
-        ).__aenter__()
-
-        self._receive_task = asyncio.create_task(self._receive_loop())
-
-    async def send_audio(self, base64_pcm: str) -> None:
-        """Send a base64-encoded PCM audio chunk to Gemini."""
-        if self._session is None or self._closed:
-            return
-        await self._session.send_realtime_input(
-            media_chunks=[
-                genai_types.Blob(
-                    data=base64_pcm,
-                    mime_type="audio/pcm;rate=16000",
-                )
-            ]
-        )
-
-    async def send_context(self, context_text: str) -> None:
-        """Inject a location context update mid-session."""
-        if self._session is None or self._closed:
-            return
-        await self._session.send_client_content(
-            turns=[
-                genai_types.Content(
-                    role="user",
-                    parts=[genai_types.Part(text=context_text)],
-                )
-            ],
-            turn_complete=False,
-        )
-
-    async def close(self) -> None:
-        """Close the Gemini Live session."""
-        self._closed = True
-        if self._receive_task:
-            self._receive_task.cancel()
-            try:
-                await self._receive_task
-            except asyncio.CancelledError:
-                pass
-        if self._session:
-            try:
-                await self._session.__aexit__(None, None, None)
-            except Exception:
-                pass
-
-    async def _receive_loop(self) -> None:
-        """Continuously receive messages from Gemini Live."""
         try:
-            async for response in self._session.receive():
-                if self._closed:
-                    break
-
-                # Audio output
-                if response.data:
-                    import base64
-                    audio_b64 = base64.b64encode(response.data).decode()
-                    await self.on_audio(audio_b64)
-
-                # Turn complete signal
-                if response.server_content and response.server_content.turn_complete:
-                    await self.on_audio_end()
-
-                # Transcript (input/output text)
-                if response.server_content:
-                    sc = response.server_content
-                    if sc.model_turn:
-                        for part in sc.model_turn.parts:
-                            if part.text:
-                                await self.on_transcript("agent", part.text)
-                    if sc.input_transcription:
-                        await self.on_transcript("user", sc.input_transcription)
-
+            async with self._client.aio.live.connect(
+                model=GEMINI_MODEL, config=config
+            ) as session:
+                # Run sender and receiver concurrently inside the context
+                await asyncio.gather(
+                    self._send_loop(session),
+                    self._receive_loop(session),
+                )
         except asyncio.CancelledError:
             pass
         except Exception as e:
             if not self._closed:
                 await self.on_error(f"Gemini session error: {e}")
+
+    async def _send_loop(self, session) -> None:
+        """Forward audio and context messages to Gemini."""
+        while not self._closed:
+            # Check context queue first (non-blocking)
+            try:
+                ctx = self._context_queue.get_nowait()
+                if ctx is None:
+                    return
+                await session.send_client_content(
+                    turns=genai_types.Content(
+                        role="user",
+                        parts=[genai_types.Part(text=ctx)],
+                    ),
+                    turn_complete=False,
+                )
+                continue
+            except asyncio.QueueEmpty:
+                pass
+
+            # Wait for next audio chunk (with short timeout to re-check context)
+            try:
+                chunk = await asyncio.wait_for(self._audio_queue.get(), timeout=0.05)
+                if chunk is None:
+                    return
+                audio_bytes = base64.b64decode(chunk)
+                await session.send_realtime_input(
+                    audio=genai_types.Blob(
+                        data=audio_bytes,
+                        mime_type="audio/pcm;rate=16000",
+                    )
+                )
+            except asyncio.TimeoutError:
+                continue
+
+    async def _receive_loop(self, session) -> None:
+        """Receive and dispatch messages from Gemini."""
+        async for message in session.receive():
+            if self._closed:
+                break
+
+            # Audio output
+            if message.data:
+                audio_b64 = base64.b64encode(message.data).decode()
+                await self.on_audio(audio_b64)
+
+            # Turn complete
+            if message.server_content and message.server_content.turn_complete:
+                await self.on_audio_end()
+
+            # Output transcript (agent speech → text)
+            if message.server_content and message.server_content.output_transcription:
+                text = message.server_content.output_transcription.text
+                if text:
+                    await self.on_transcript("agent", text)
+
+            # Input transcript (user speech → text)
+            if message.server_content and message.server_content.input_transcription:
+                text = message.server_content.input_transcription.text
+                if text:
+                    await self.on_transcript("user", text)
