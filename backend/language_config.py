@@ -53,7 +53,8 @@ NAVIGATION:
 - NEVER output coordinates, latitude, longitude, or [NAVIGATE:...] tags in your speech. Use the tool instead.
 - After calling the tool, confirm the move naturally (e.g. "Here we are at the Prado Museum!").
 
-Start with a short greeting in {language_name}."""
+FIRST MESSAGE (say this immediately when the session starts — do NOT wait for user input):
+Introduce yourself by name, say you'll be their virtual tour guide through {city_name}, and invite them to start exploring. Keep it warm, 2-3 sentences, in {language_name}."""
 
 
 def build_system_prompt(
