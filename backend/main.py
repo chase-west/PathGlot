@@ -104,6 +104,9 @@ async def session_endpoint(
         except Exception:
             pass
 
+    # Buffer recent agent speech for place name matching
+    agent_text_buffer: list[str] = []
+
     async def on_transcript(role: str, text: str):
         try:
             await websocket.send_text(
@@ -111,6 +114,38 @@ async def session_endpoint(
             )
         except Exception:
             pass
+
+        # Detect place mentions in agent speech → trigger vision highlight
+        if role == "agent" and cached_places:
+            agent_text_buffer.append(text)
+            # Keep buffer to last ~500 chars to catch names split across chunks
+            while sum(len(t) for t in agent_text_buffer) > 500:
+                agent_text_buffer.pop(0)
+            recent_text = "".join(agent_text_buffer).lower()
+
+            for p in cached_places:
+                pname = p.get("name", "")
+                if not pname or len(pname) < 3:
+                    continue
+                # Try full name and individual words (>4 chars) for partial matches
+                # e.g. "Museo del Prado" → also match if agent just says "Prado"
+                name_lower = pname.lower()
+                matched = name_lower in recent_text
+                if not matched:
+                    words = [w for w in name_lower.split() if len(w) > 4]
+                    matched = any(w in recent_text for w in words)
+                if matched:
+                    summary = p.get("summary", "")
+                    plat = p.get("lat")
+                    plng = p.get("lng")
+                    print(f"[highlight] transcript matched '{pname}' in: {recent_text[-80:]!r}")
+                    # Fire and forget — don't block transcript delivery
+                    asyncio.create_task(
+                        _send_highlight(pname, summary, place_lat=plat, place_lng=plng)
+                    )
+                    # Clear buffer to avoid re-triggering on same text
+                    agent_text_buffer.clear()
+                    break
 
     async def on_error(message: str):
         try:
@@ -135,6 +170,40 @@ async def session_endpoint(
             print(f"[ws] ERROR sending navigate: {e}")
 
     last_position: tuple[float, float] | None = None
+    last_pov: dict[str, float] = {"heading": 0.0, "pitch": 0.0, "zoom": 1.0}
+    # Cache nearby places for transcript-based place detection
+    cached_places: list[dict[str, Any]] = []
+    # Dedup: don't re-highlight the same place within 15 seconds
+    recent_highlights: dict[str, float] = {}
+
+    async def _send_highlight(
+        place_name: str,
+        description: str,
+        place_lat: float | None = None,
+        place_lng: float | None = None,
+    ) -> None:
+        """Send a single highlight with lat/lng for bearing-based positioning."""
+        import time
+        now = time.time()
+        # Dedup check
+        if place_name.lower() in recent_highlights and now - recent_highlights[place_name.lower()] < 15:
+            return
+        recent_highlights[place_name.lower()] = now
+
+        msg: dict[str, Any] = {
+            "type": "highlight",
+            "name": place_name,
+            "description": description,
+        }
+        if place_lat is not None and place_lng is not None:
+            msg["lat"] = place_lat
+            msg["lng"] = place_lng
+
+        print(f"[highlight] sending '{place_name}' at ({place_lat}, {place_lng})")
+        try:
+            await websocket.send_text(json.dumps(msg))
+        except Exception as e:
+            print(f"[ws] ERROR sending highlight: {e}")
 
     async def resolve_place(query: str) -> dict | None:
         """Called by Gemini tool call — resolve a place by name via Text Search."""
@@ -195,11 +264,22 @@ async def session_endpoint(
                         last_position = (lat, lng)
                         # Fetch nearby places
                         places = await nearby_search(lat, lng, language_code=lang)
+                        print(f"[places] found {len(places)} nearby: {[p.get('name','?') for p in places[:3]]}")
+                        # Cache for transcript-based place detection
+                        cached_places.clear()
+                        cached_places.extend(places)
                         context_msg = build_location_update(places, lat, lng, lang)
                         await gemini.send_context(context_msg)
                         await websocket.send_text(
                             json.dumps({"type": "status", "message": "context_updated"})
                         )
+
+
+                case "pov":
+                    # Street View POV update (heading/pitch/zoom)
+                    last_pov["heading"] = float(msg.get("heading", 0))
+                    last_pov["pitch"] = float(msg.get("pitch", 0))
+                    last_pov["zoom"] = float(msg.get("zoom", 1))
 
                 case _:
                     print(f"[ws] Unknown message type: {msg.get('type')}")

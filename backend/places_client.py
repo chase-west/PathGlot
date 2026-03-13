@@ -9,6 +9,7 @@ PLACES_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 PLACES_API_URL = "https://places.googleapis.com/v1/places:searchNearby"
 
 # Place types we care about for a tour guide experience
+# Must be valid Table A types from the Places API (New).
 PLACE_TYPES = [
     "tourist_attraction",
     "museum",
@@ -17,11 +18,14 @@ PLACE_TYPES = [
     "bar",
     "park",
     "church",
-    "monument",
+    "historical_landmark",
     "shopping_mall",
     "art_gallery",
     "library",
-    "historic_site",
+    "cultural_center",
+    "performing_arts_theater",
+    "market",
+    "university",
 ]
 
 
@@ -29,7 +33,7 @@ async def nearby_search(
     lat: float,
     lng: float,
     language_code: str = "en",
-    radius_meters: int = 50,
+    radius_meters: int = 200,
     max_results: int = 10,
 ) -> list[dict[str, Any]]:
     """

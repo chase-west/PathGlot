@@ -10,9 +10,16 @@ export interface StreetViewPosition {
   pov: google.maps.StreetViewPov;
 }
 
+export interface StreetViewPov {
+  heading: number;
+  pitch: number;
+  zoom: number;
+}
+
 interface UseStreetViewOptions {
   city: City;
   onPositionChange?: (position: StreetViewPosition) => void;
+  onPovChange?: (pov: StreetViewPov) => void;
 }
 
 const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string | undefined) || "http://localhost:8000";
@@ -41,16 +48,22 @@ async function getMapsLoader(): Promise<Loader> {
   return loaderInstance;
 }
 
-export function useStreetView({ city, onPositionChange }: UseStreetViewOptions) {
+export function useStreetView({ city, onPositionChange, onPovChange }: UseStreetViewOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const panoramaRef = useRef<google.maps.StreetViewPanorama | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const onPositionChangeRef = useRef(onPositionChange);
+  const onPovChangeRef = useRef(onPovChange);
+  const lastPovSentRef = useRef(0);
 
   useEffect(() => {
     onPositionChangeRef.current = onPositionChange;
   }, [onPositionChange]);
+
+  useEffect(() => {
+    onPovChangeRef.current = onPovChange;
+  }, [onPovChange]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -123,6 +136,18 @@ export function useStreetView({ city, onPositionChange }: UseStreetViewOptions) 
             });
           }
         });
+
+        // Throttled POV updates for vision-based label placement
+        panorama.addListener("pov_changed", () => {
+          const now = Date.now();
+          if (now - lastPovSentRef.current < 500) return;
+          lastPovSentRef.current = now;
+          const pov = panorama.getPov();
+          const zoom = panorama.getZoom() ?? 1;
+          if (onPovChangeRef.current) {
+            onPovChangeRef.current({ heading: pov.heading, pitch: pov.pitch, zoom });
+          }
+        });
       })
       .catch((err) => {
         console.error("Maps API failed to load:", err);
@@ -170,5 +195,22 @@ export function useStreetView({ city, onPositionChange }: UseStreetViewOptions) 
     );
   }, []);
 
-  return { containerRef, isLoaded, error, panorama: panoramaRef, moveTo };
+  const lookAt = useCallback((lat: number, lng: number) => {
+    const pano = panoramaRef.current;
+    if (!pano) return;
+    const pos = pano.getPosition();
+    if (!pos) return;
+
+    // Calculate bearing from current position to target
+    const lat1 = pos.lat() * Math.PI / 180;
+    const lat2 = lat * Math.PI / 180;
+    const dLng = (lng - pos.lng()) * Math.PI / 180;
+    const y = Math.sin(dLng) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+    const heading = ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+
+    pano.setPov({ heading, pitch: 5 });
+  }, []);
+
+  return { containerRef, isLoaded, error, panorama: panoramaRef, moveTo, lookAt };
 }

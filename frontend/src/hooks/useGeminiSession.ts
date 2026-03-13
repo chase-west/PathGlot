@@ -38,6 +38,12 @@ export function useGeminiSession({
   const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
   const [transcript, setTranscript] = useState<ConversationTurn[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activeHighlight, setActiveHighlight] = useState<{
+    name: string; description: string;
+    lat?: number; lng?: number;
+    target_pitch?: number;
+  } | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track whether the last turn is "sealed" (complete) so new fragments
   // from the same role start a fresh bubble after turn_complete.
   const turnSealedRef = useRef(true);
@@ -147,6 +153,17 @@ export function useGeminiSession({
         onNavigateRef.current?.(msg.place_name, msg.lat, msg.lng);
         break;
 
+      case "highlight":
+        console.log("[session] highlight:", msg.name, "lat:", msg.lat, "lng:", msg.lng, "pitch:", msg.target_pitch);
+        if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+        setActiveHighlight({
+          name: msg.name, description: msg.description,
+          lat: msg.lat, lng: msg.lng,
+          target_pitch: msg.target_pitch,
+        });
+        highlightTimerRef.current = setTimeout(() => setActiveHighlight(null), 8000);
+        break;
+
       case "status":
         // Server-side status updates (e.g., "context_updated")
         console.log("[session status]", msg.message);
@@ -240,6 +257,18 @@ export function useGeminiSession({
     []
   );
 
+  // Send POV update to backend (for vision-based label placement)
+  const sendPovUpdate = useCallback(
+    (heading: number, pitch: number, zoom: number) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({ type: "pov", heading, pitch, zoom })
+        );
+      }
+    },
+    []
+  );
+
   // Disconnect and clean up
   const disconnect = useCallback(() => {
     stopMic();
@@ -262,11 +291,13 @@ export function useGeminiSession({
     isAgentSpeaking,
     transcript,
     error,
+    activeHighlight,
     connect,
     disconnect,
     startMic,
     stopMic,
     sendPositionUpdate,
+    sendPovUpdate,
   };
 }
 
@@ -308,6 +339,15 @@ interface NavigateMessage {
   lng: number;
 }
 
+interface HighlightMessage {
+  type: "highlight";
+  name: string;
+  description: string;
+  lat?: number;
+  lng?: number;
+  target_pitch?: number; // vision-refined vertical angle
+}
+
 type BackendMessage =
   | AudioMessage
   | AudioEndMessage
@@ -315,4 +355,5 @@ type BackendMessage =
   | TranscriptMessage
   | ErrorMessage
   | StatusMessage
-  | NavigateMessage;
+  | NavigateMessage
+  | HighlightMessage;

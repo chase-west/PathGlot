@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import os
+import re
 from typing import Callable, Awaitable, Any
 
 from google import genai
@@ -13,8 +14,11 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 # v1alpha API version unlocks affective dialog and proactive audio.
 GEMINI_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
 
-# Tool declaration for navigation
-NAVIGATE_TOOL = genai_types.Tool(
+# Tool declarations — only navigate_to_place.
+# highlight_place was removed because a second tool destabilizes the
+# preview audio model (causes 1008 errors).  Place highlighting is now
+# detected from output transcription text instead.
+TOOLS = genai_types.Tool(
     function_declarations=[
         genai_types.FunctionDeclaration(
             name="navigate_to_place",
@@ -125,20 +129,21 @@ class GeminiLiveSession:
             realtime_input_config=genai_types.RealtimeInputConfig(
                 automatic_activity_detection=genai_types.AutomaticActivityDetection(
                     disabled=False,
-                    # LOW sensitivity = wait longer before assuming user is done
-                    # speaking. Prevents interrupt storms.
+                    # LOW end sensitivity prevents the model from cutting off the
+                    # user mid-sentence.  Removing this previously caused echo-loop
+                    # garbled language detection.
                     end_of_speech_sensitivity=genai_types.EndSensitivity.END_SENSITIVITY_LOW,
                 ),
             ),
-            # Function calling for navigation
-            tools=[NAVIGATE_TOOL],
+            # Function calling for navigation and highlighting
+            tools=[TOOLS],
         )
 
         try:
             async with self._client.aio.live.connect(
                 model=GEMINI_MODEL, config=config
             ) as session:
-                # Send initial prompt to trigger the greeting immediately
+                # Prime the session — turn_complete=True triggers the greeting
                 await session.send_client_content(
                     turns=genai_types.Content(
                         role="user",
@@ -233,8 +238,13 @@ class GeminiLiveSession:
                     if message.server_content.output_transcription:
                         text = message.server_content.output_transcription.text
                         if text:
-                            print(f"[gemini recv] agent: {text!r}")
-                            await self.on_transcript("agent", text)
+                            # Filter out tool call syntax that leaks into transcription
+                            # but preserve whitespace (chunks arrive with leading spaces)
+                            text = re.sub(r'(?:reagált?:?)?\s*\w+_to_\w+\{[^}]*\}', '', text)
+                            text = re.sub(r'<ctrl\d+>', '', text)
+                            if text and not text.isspace():
+                                print(f"[gemini recv] agent: {text!r}")
+                                await self.on_transcript("agent", text)
 
                     # Turn complete (after transcript)
                     if message.server_content.turn_complete:

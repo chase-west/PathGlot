@@ -37,11 +37,13 @@ def build_location_update(
 
     return (
         f"[LOCATION UPDATE] The user has moved to a new area.\n"
-        f"Nearby places within ~50 meters (from Google Places API — these are verified):\n{places_text}\n\n"
-        f"Naturally acknowledge this location change in {_language_name(language_code)} "
-        f"and weave in some of these nearby places into your commentary. "
-        f"Only mention places you are confident about from this list. "
-        f"If the user wants to visit a place, use the navigate_to_place tool with a descriptive query."
+        f"Nearby places (verified from Google Places API):\n{places_text}\n\n"
+        f"Start speaking NOW in {_language_name(language_code)} about this area — don't wait for the user. "
+        f"Pick 1-2 of the most interesting places from this list and bring them to life! "
+        f"Say each place's full name clearly. React naturally — point things out like a real guide would. "
+        f"Ask the user a question to keep the conversation going. "
+        f"Only speak about places on this list. "
+        f"If the user wants to visit somewhere, use navigate_to_place."
     )
 
 

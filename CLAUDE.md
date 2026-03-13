@@ -41,6 +41,7 @@ Backend (FastAPI, Cloud Run)
   ├── WebSocket relay
   ├── Places API (nearby search on position change >50m)
   ├── Context manager (injects location into Gemini session)
+  ├── Vision locator (Static Street View + Gemini Flash for label placement)
   └── Gemini Live WebSocket client
 
 Gemini Live API (gemini-2.5-flash-native-audio-preview-12-2025, v1alpha)
@@ -52,6 +53,9 @@ Gemini Live API (gemini-2.5-flash-native-audio-preview-12-2025, v1alpha)
 - **50m movement threshold** — prevents Places API spam while user pans Street View.
 - **System prompt language lock** — Gemini will comply ~95% of the time; we can't hard-block at model level.
 - **Verified data only** — agent only speaks to Places API data + landmark knowledge, says "I'm not certain" otherwise.
+- **Single tool only** — Only `navigate_to_place` is registered as a Gemini tool. `highlight_place` was removed because a second tool destabilizes the preview audio model (1008 errors). Place highlighting is now detected from output transcription text via substring matching against cached Places API results.
+- **Vision-based label placement** — When the agent mentions a place, the backend fetches a Static Street View image at the user's current POV, then calls Gemini Flash (standard API) to locate the place in the image. Returns (fx, fy) viewport fractions to the frontend for precise label positioning. Falls back to lat/lng bearing math if vision fails.
+- **END_SENSITIVITY_LOW** — Must stay enabled in VAD config. Removing it causes echo-loop garbled language detection.
 
 ## Frontend Design
 

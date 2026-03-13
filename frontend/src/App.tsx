@@ -6,7 +6,7 @@ import { ConversationLog } from "./components/ConversationLog";
 import { JarvisHUD } from "./components/JarvisHUD";
 import { useGeminiSession } from "./hooks/useGeminiSession";
 import { getLanguage, getCity, type City, type Language } from "./lib/cities";
-import type { StreetViewPosition } from "./hooks/useStreetView";
+import type { StreetViewPosition, StreetViewPov } from "./hooks/useStreetView";
 
 interface SessionConfig {
   languageCode: string;
@@ -45,6 +45,13 @@ export default function App() {
   );
 
   const lastSentPositionRef = useRef<{ lat: number; lng: number } | null>(null);
+
+  const handlePovChange = useCallback(
+    (pov: StreetViewPov) => {
+      session.sendPovUpdate(pov.heading, pov.pitch, pov.zoom);
+    },
+    [session]
+  );
 
   const handlePositionChange = useCallback(
     (pos: StreetViewPosition) => {
@@ -170,7 +177,7 @@ export default function App() {
       {/* Main content */}
       <div className="flex-1 relative overflow-hidden">
         {/* Street View */}
-        <StreetView ref={streetViewRef} city={city} onPositionChange={handlePositionChange} />
+        <StreetView ref={streetViewRef} city={city} onPositionChange={handlePositionChange} onPovChange={handlePovChange} highlight={session.activeHighlight} />
 
         {/* Jarvis HUD — floating transcript overlay */}
         <JarvisHUD transcript={session.transcript} />
