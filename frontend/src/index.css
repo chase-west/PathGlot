@@ -46,3 +46,92 @@
     }
   }
 }
+
+/* ── Jarvis HUD ── */
+
+.hud-message {
+  position: relative;
+  padding: 10px 16px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 12px rgba(255, 255, 255, 0.03),
+    inset 0 0 12px rgba(255, 255, 255, 0.02);
+}
+
+.hud-agent {
+  border-left: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.hud-user {
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.hud-role-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.hud-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.hud-dot-agent {
+  background: #ffffff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+}
+
+.hud-dot-user {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.hud-role-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.hud-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.88);
+  margin: 0;
+}
+
+/* Animations */
+.hud-fade-in {
+  animation: hudSlideIn 400ms ease-out both;
+}
+
+.hud-fade-out {
+  animation: hudFadeOut 1000ms ease-in forwards;
+}
+
+@keyframes hudSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(0);
+  }
+}
+
+@keyframes hudFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}

@@ -3,6 +3,7 @@ import { LandingPage } from "./components/LandingPage";
 import { StreetView, type StreetViewHandle } from "./components/StreetView";
 import { MicButton } from "./components/MicButton";
 import { ConversationLog } from "./components/ConversationLog";
+import { JarvisHUD } from "./components/JarvisHUD";
 import { useGeminiSession } from "./hooks/useGeminiSession";
 import { getLanguage, getCity, type City, type Language } from "./lib/cities";
 import type { StreetViewPosition } from "./hooks/useStreetView";
@@ -170,6 +171,9 @@ export default function App() {
       <div className="flex-1 relative overflow-hidden">
         {/* Street View */}
         <StreetView ref={streetViewRef} city={city} onPositionChange={handlePositionChange} />
+
+        {/* Jarvis HUD — floating transcript overlay */}
+        <JarvisHUD transcript={session.transcript} />
 
         {/* Overlay controls */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
