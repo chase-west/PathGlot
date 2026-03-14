@@ -1,4 +1,9 @@
-"""Vision-based place locating using Street View static images + Gemini Flash."""
+"""Vision-based place locating using Street View static images + Gemini Flash.
+
+Flow: capture a static Street View image at the user's POV → ask Gemini Flash
+to find the place in the image → convert viewport fractions to absolute heading
+and pitch angles that the frontend can project as the user pans.
+"""
 
 import os
 import httpx
@@ -7,6 +12,11 @@ from google.genai import types as genai_types
 
 MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+# Fixed FOV for static image capture — used in the fx,fy → heading,pitch conversion
+CAPTURE_FOV = 90
+CAPTURE_SIZE = "640x480"
+CAPTURE_ASPECT = 640 / 480  # width / height
 
 
 async def fetch_streetview_image(
@@ -98,3 +108,43 @@ async def locate_place_in_image(
     except Exception as e:
         print(f"[vision_locate] Gemini Flash error: {e}")
         return None
+
+
+async def vision_locate_place(
+    place_name: str,
+    lat: float,
+    lng: float,
+    heading: float,
+    pitch: float,
+) -> tuple[float, float] | None:
+    """
+    Full pipeline: capture Street View image → find place → return (heading, pitch).
+
+    Returns the absolute heading and pitch angles where the place appears,
+    or None if the place couldn't be found in the image.
+    """
+    image = await fetch_streetview_image(
+        lat, lng, heading, pitch,
+        fov=CAPTURE_FOV, size=CAPTURE_SIZE,
+    )
+    if not image:
+        print(f"[vision_locate] no image for {place_name}")
+        return None
+
+    result = await locate_place_in_image(image, place_name)
+    if not result:
+        print(f"[vision_locate] '{place_name}' not found in image")
+        return None
+
+    fx, fy = result
+    # Convert viewport fractions → absolute heading and pitch.
+    # fx=0 is left edge (heading - FOV/2), fx=1 is right edge (heading + FOV/2)
+    # fy=0 is top edge (pitch + vFov/2), fy=1 is bottom edge (pitch - vFov/2)
+    h_fov = CAPTURE_FOV
+    v_fov = CAPTURE_FOV / CAPTURE_ASPECT  # ~67.5° for 4:3
+
+    target_heading = (heading + (fx - 0.5) * h_fov) % 360
+    target_pitch = pitch + (0.5 - fy) * v_fov
+
+    print(f"[vision_locate] '{place_name}' at fx={fx:.2f},fy={fy:.2f} → heading={target_heading:.1f}, pitch={target_pitch:.1f}")
+    return (target_heading, target_pitch)

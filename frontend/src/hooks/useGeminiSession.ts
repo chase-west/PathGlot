@@ -41,7 +41,7 @@ export function useGeminiSession({
   const [activeHighlight, setActiveHighlight] = useState<{
     name: string; description: string;
     lat?: number; lng?: number;
-    target_pitch?: number;
+    target_heading?: number; target_pitch?: number;
   } | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track whether the last turn is "sealed" (complete) so new fragments
@@ -154,11 +154,12 @@ export function useGeminiSession({
         break;
 
       case "highlight":
-        console.log("[session] highlight:", msg.name, "lat:", msg.lat, "lng:", msg.lng, "pitch:", msg.target_pitch);
+        console.log("[session] highlight:", msg.name, "heading:", msg.target_heading, "pitch:", msg.target_pitch, "lat:", msg.lat, "lng:", msg.lng);
         if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
         setActiveHighlight({
           name: msg.name, description: msg.description,
           lat: msg.lat, lng: msg.lng,
+          target_heading: msg.target_heading,
           target_pitch: msg.target_pitch,
         });
         highlightTimerRef.current = setTimeout(() => setActiveHighlight(null), 8000);
@@ -345,7 +346,8 @@ interface HighlightMessage {
   description: string;
   lat?: number;
   lng?: number;
-  target_pitch?: number; // vision-refined vertical angle
+  target_heading?: number; // vision-refined horizontal angle (absolute degrees)
+  target_pitch?: number;   // vision-refined vertical angle (absolute degrees)
 }
 
 type BackendMessage =
