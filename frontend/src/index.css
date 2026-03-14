@@ -47,6 +47,38 @@
   }
 }
 
+/* ── Phrase ribbon marquee ── */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-33.333%);
+  }
+}
+
+.phrase-ribbon {
+  animation: marquee 80s linear infinite;
+}
+
+/* ── Scroll indicator ── */
+@keyframes scrollPulse {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scaleY(0.8);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scaleY(1);
+  }
+}
+
+.scroll-indicator {
+  animation: scrollPulse 2.5s ease-in-out infinite;
+  transform-origin: top;
+}
+
 /* ── Jarvis HUD ── */
 
 .hud-message {

@@ -175,8 +175,8 @@ function GlobeMesh({
       {/* Globe dots */}
       <points geometry={dotGeometry}>
         <pointsMaterial
-          color="#334155"
-          size={0.012}
+          color="#94a3b8"
+          size={0.015}
           sizeAttenuation
           transparent
           opacity={0.6}
@@ -187,9 +187,9 @@ function GlobeMesh({
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[radius - 0.002, radius + 0.002, 128]} />
         <meshBasicMaterial
-          color="#1e293b"
+          color="#334155"
           transparent
-          opacity={0.3}
+          opacity={0.35}
           side={THREE.DoubleSide}
         />
       </mesh>

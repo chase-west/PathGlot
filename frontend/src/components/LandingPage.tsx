@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { LANGUAGES, type Language, type City } from "../lib/cities";
 import { Globe } from "./Globe";
 
@@ -11,13 +11,22 @@ export function LandingPage({ onStart }: Props) {
     null
   );
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const selectionRef = useRef<HTMLElement>(null);
 
   function handleLanguageSelect(lang: Language) {
-    setSelectedLanguage(lang);
-    setSelectedCity(null);
+    if (selectedLanguage?.code === lang.code) {
+      setSelectedLanguage(null);
+      setSelectedCity(null);
+    } else {
+      setSelectedLanguage(lang);
+      setSelectedCity(null);
+    }
   }
 
-  function handleCitySelect(city: City) {
+  function handleCitySelect(city: City, lang?: Language) {
+    if (lang && selectedLanguage?.code !== lang.code) {
+      setSelectedLanguage(lang);
+    }
     setSelectedCity(city);
   }
 
@@ -27,6 +36,7 @@ export function LandingPage({ onStart }: Props) {
     setSelectedLanguage(lang);
     const city = lang.cities.find((c) => c.id === cityId);
     if (city) setSelectedCity(city);
+    selectionRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
   function handleStart() {
@@ -39,179 +49,200 @@ export function LandingPage({ onStart }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-white">
+    <div className="min-h-screen bg-[#09090b] text-white overflow-x-hidden">
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-5 flex items-center justify-between">
-        <span className="text-lg font-semibold tracking-tight text-white">
+      <nav className="fixed top-0 left-0 right-0 z-50 px-6 md:px-10 py-5 flex items-center justify-between">
+        <span className="text-sm font-semibold tracking-[0.15em] uppercase text-white">
           PathGlot
         </span>
         <a
           href="#start"
-          className="text-sm text-zinc-400 hover:text-white transition-colors"
+          className="text-[11px] tracking-[0.1em] uppercase text-zinc-500 hover:text-white transition-colors border border-zinc-800 px-4 py-2 rounded-full"
         >
-          Get started
+          Get Started
         </a>
       </nav>
 
-      {/* Hero */}
-      <section className="relative min-h-screen flex items-center overflow-hidden">
-        {/* Globe - positioned as background element */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      {/* Hero — globe dominant */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-20 pb-8">
+        {/* Floating language phrases — scattered behind globe */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
+          {[
+            { text: "Hola", x: "8%", y: "18%", size: "text-lg", opacity: "opacity-[0.07]" },
+            { text: "Bonjour", x: "78%", y: "12%", size: "text-2xl", opacity: "opacity-[0.06]" },
+            { text: "こんにちは", x: "85%", y: "65%", size: "text-xl", opacity: "opacity-[0.08]" },
+            { text: "Guten Tag", x: "5%", y: "72%", size: "text-base", opacity: "opacity-[0.06]" },
+            { text: "Ciao", x: "72%", y: "82%", size: "text-lg", opacity: "opacity-[0.07]" },
+            { text: "Olá", x: "15%", y: "45%", size: "text-xl", opacity: "opacity-[0.05]" },
+            { text: "你好", x: "90%", y: "38%", size: "text-base", opacity: "opacity-[0.06]" },
+            { text: "Привет", x: "3%", y: "88%", size: "text-sm", opacity: "opacity-[0.05]" },
+          ].map((phrase, i) => (
+            <span
+              key={i}
+              className={`absolute font-light ${phrase.size} ${phrase.opacity} text-white`}
+              style={{ left: phrase.x, top: phrase.y }}
+            >
+              {phrase.text}
+            </span>
+          ))}
+        </div>
+
+        {/* Title — above globe */}
+        <div className="relative z-10 text-center mb-4">
+          <h1 className="text-[clamp(2rem,5vw,3.5rem)] font-bold tracking-[-0.03em] leading-[1.1]">
+            Walk any street. Speak any language.
+          </h1>
+        </div>
+
+        {/* Globe — large and central */}
+        <div className="relative z-10 w-full max-w-[700px] aspect-square">
           <Globe
             selectedLanguageCode={selectedLanguage?.code ?? null}
             selectedCityId={selectedCity?.id ?? null}
             onCityClick={handleGlobeCityClick}
-            className="w-full h-full max-w-[800px] max-h-[800px] opacity-40 pointer-events-auto"
+            className="w-full h-full"
           />
         </div>
 
-        {/* Hero text */}
-        <div className="relative z-10 max-w-3xl mx-auto px-6 text-center">
-          <p className="text-sm tracking-[0.2em] uppercase text-zinc-500 mb-6">
-            Language through exploration
+        {/* Flag row under globe */}
+        <div className="relative z-10 flex items-center gap-5 mt-2">
+          {LANGUAGES.map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => {
+                handleLanguageSelect(lang);
+                selectionRef.current?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className={`text-2xl sm:text-3xl transition-all duration-200 hover:scale-110 ${
+                selectedLanguage?.code === lang.code
+                  ? "scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
+                  : "opacity-50 hover:opacity-100"
+              }`}
+              title={lang.name}
+            >
+              {lang.flag}
+            </button>
+          ))}
+        </div>
+
+        {/* Scroll indicator */}
+        <div className="mt-auto pt-8 flex flex-col items-center gap-2">
+          <p className="text-[10px] tracking-[0.25em] uppercase text-zinc-600">
+            Scroll to explore
           </p>
-          <h1 className="text-5xl sm:text-7xl font-bold tracking-tight leading-[1.1] mb-8">
-            Walk the streets.
-            <br />
-            <span className="text-zinc-500">Speak the language.</span>
-          </h1>
-          <p className="text-lg text-zinc-400 max-w-lg mx-auto mb-12 leading-relaxed">
-            Drop into a foreign city through Street View. An AI guide walks with
-            you, speaking only in your target language — pointing out landmarks,
-            narrating the culture, and helping you listen your way to fluency.
-          </p>
-          <a
-            href="#start"
-            className="inline-block text-sm font-medium text-zinc-300 border border-zinc-700 px-8 py-3 rounded-full hover:bg-white hover:text-black transition-all duration-300"
-          >
-            Start exploring
-          </a>
+          <div className="scroll-indicator w-px h-6 bg-zinc-700" />
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="py-32 px-6 border-t border-zinc-900">
+      {/* Phrase ribbon */}
+      <div className="border-y border-zinc-900 py-4 overflow-hidden">
+        <div className="phrase-ribbon flex whitespace-nowrap">
+          {[
+            "Hola, ¿cómo estás?",
+            "Bonjour, comment allez-vous?",
+            "こんにちは、お元気ですか？",
+            "Guten Tag, wie geht es Ihnen?",
+            "Ciao, come stai?",
+            "Olá, como vai?",
+            "¿Dónde está la biblioteca?",
+            "Je voudrais un café, s'il vous plaît",
+            "すみません、駅はどこですか？",
+            "Ich möchte das bitte bestellen",
+            "Mi può indicare la strada?",
+            "Onde fica o mercado?",
+          ]
+            .flatMap((p) => [p, p, p])
+            .map((phrase, i) => (
+              <span
+                key={i}
+                className="text-[13px] text-zinc-700 font-light mx-8"
+              >
+                {phrase}
+              </span>
+            ))}
+        </div>
+      </div>
+
+      {/* Language selection */}
+      <section
+        ref={selectionRef}
+        id="start"
+        className="py-20 lg:py-28 px-6 md:px-10"
+      >
         <div className="max-w-5xl mx-auto">
-          <p className="text-sm tracking-[0.2em] uppercase text-zinc-600 mb-4">
-            How it works
+          <p className="text-[11px] tracking-[0.25em] uppercase text-zinc-600 mb-4">
+            Choose your destination
           </p>
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-20">
-            Three steps to immersion
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-[-0.02em] mb-16">
+            Where will you walk?
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
-            <div>
-              <div className="text-5xl font-extralight text-zinc-700 mb-4">
-                01
-              </div>
-              <h3 className="text-lg font-semibold mb-3">Choose a language</h3>
-              <p className="text-zinc-500 leading-relaxed">
-                Pick from Spanish, French, German, Japanese, Italian, or
-                Portuguese. Your AI guide adapts to your choice.
-              </p>
-            </div>
-            <div>
-              <div className="text-5xl font-extralight text-zinc-700 mb-4">
-                02
-              </div>
-              <h3 className="text-lg font-semibold mb-3">Drop into a city</h3>
-              <p className="text-zinc-500 leading-relaxed">
-                Walk real streets in Madrid, Paris, Tokyo, and more through
-                Google Street View. Move freely at your own pace.
-              </p>
-            </div>
-            <div>
-              <div className="text-5xl font-extralight text-zinc-700 mb-4">
-                03
-              </div>
-              <h3 className="text-lg font-semibold mb-3">Listen and learn</h3>
-              <p className="text-zinc-500 leading-relaxed">
-                Your AI guide narrates what&apos;s around you — landmarks,
-                street names, local culture — entirely in your target language.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Selection */}
-      <section id="start" className="py-32 px-6 border-t border-zinc-900">
-        <div className="max-w-3xl mx-auto">
-          {/* Language selection */}
-          <div className="mb-16">
-            <p className="text-sm tracking-[0.2em] uppercase text-zinc-600 mb-4">
-              Step 1
-            </p>
-            <h2 className="text-2xl font-bold tracking-tight mb-8">
-              Choose a language
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {LANGUAGES.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => handleLanguageSelect(lang)}
-                  className={`group text-left p-5 rounded-xl border transition-all duration-200 ${
-                    selectedLanguage?.code === lang.code
-                      ? "border-white bg-white/[0.03]"
-                      : "border-zinc-800 hover:border-zinc-600"
-                  }`}
-                >
-                  <span className="text-2xl block mb-3">{lang.flag}</span>
-                  <span className="block font-medium text-sm text-white">
-                    {lang.name}
-                  </span>
-                  <span className="block text-xs text-zinc-500 mt-0.5">
-                    {lang.nativeName}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* City selection */}
-          {selectedLanguage && (
-            <div className="mb-16 animate-fade-in">
-              <p className="text-sm tracking-[0.2em] uppercase text-zinc-600 mb-4">
-                Step 2
-              </p>
-              <h2 className="text-2xl font-bold tracking-tight mb-8">
-                Pick your city
-              </h2>
-              <div className="space-y-2">
-                {selectedLanguage.cities.map((city) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-6">
+            {LANGUAGES.map((lang) => {
+              const isSelected = selectedLanguage?.code === lang.code;
+              return (
+                <div key={lang.code}>
                   <button
-                    key={city.id}
-                    onClick={() => handleCitySelect(city)}
-                    className={`w-full text-left px-6 py-4 rounded-xl border transition-all duration-200 flex items-center justify-between group ${
-                      selectedCity?.id === city.id
-                        ? "border-white bg-white/[0.03]"
-                        : "border-zinc-800 hover:border-zinc-600"
-                    }`}
+                    onClick={() => handleLanguageSelect(lang)}
+                    className="group w-full text-left"
                   >
-                    <div>
-                      <span className="font-medium text-white">
-                        {city.name}
-                      </span>
-                      <span className="text-zinc-500 text-sm ml-3">
-                        {city.country}
-                      </span>
-                    </div>
-                    <span className="text-zinc-700 group-hover:text-zinc-400 transition-colors">
-                      →
+                    <span className="text-4xl block mb-2">{lang.flag}</span>
+                    <span
+                      className={`block text-lg font-bold tracking-tight transition-colors duration-200 ${
+                        isSelected
+                          ? "text-white"
+                          : "text-zinc-400 group-hover:text-white"
+                      }`}
+                    >
+                      {lang.nativeName}
+                    </span>
+                    <span className="block text-[10px] tracking-[0.1em] uppercase text-zinc-600 mt-0.5">
+                      {lang.name}
                     </span>
                   </button>
-                ))}
-              </div>
-            </div>
-          )}
+
+                  {/* Cities */}
+                  <div
+                    className={`mt-3 space-y-0.5 border-t border-zinc-800/50 pt-3 transition-opacity duration-300 ${
+                      isSelected ? "opacity-100" : "opacity-20"
+                    }`}
+                  >
+                    {lang.cities.map((city) => {
+                      const isCitySelected =
+                        isSelected && selectedCity?.id === city.id;
+                      return (
+                        <button
+                          key={city.id}
+                          onClick={() => handleCitySelect(city, lang)}
+                          className={`flex items-center gap-1.5 w-full text-left py-1 text-xs transition-colors duration-200 ${
+                            isCitySelected
+                              ? "text-white font-medium"
+                              : "text-zinc-500 hover:text-zinc-300"
+                          }`}
+                        >
+                          <span
+                            className={`w-1 h-1 rounded-full shrink-0 transition-colors duration-200 ${
+                              isCitySelected ? "bg-white" : "bg-zinc-700"
+                            }`}
+                          />
+                          {city.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
           {/* Start button */}
           {selectedLanguage && selectedCity && (
-            <div className="animate-fade-in">
+            <div className="mt-16 animate-fade-in text-center">
               <button
                 onClick={handleStart}
-                className="w-full py-4 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 transition-colors duration-200"
+                className="px-14 py-4 bg-white text-black font-medium text-sm tracking-wide rounded-full hover:bg-zinc-200 active:scale-[0.98] transition-all duration-200"
               >
-                Start in {selectedCity.name} →
+                Begin in {selectedCity.name} →
               </button>
             </div>
           )}
@@ -219,13 +250,13 @@ export function LandingPage({ onStart }: Props) {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-900 py-12 px-6">
+      <footer className="border-t border-zinc-900 py-10 px-6 md:px-10">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-sm text-zinc-600">
-            PathGlot — AI-powered language immersion
+          <span className="text-[11px] tracking-[0.15em] uppercase text-zinc-600">
+            PathGlot
           </span>
-          <span className="text-xs text-zinc-700">
-            Built with Gemini Live API · Google Maps · Places API
+          <span className="text-[11px] text-zinc-700">
+            Gemini Live API · Google Maps · Places API
           </span>
         </div>
       </footer>
