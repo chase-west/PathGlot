@@ -29,7 +29,7 @@ const LANG_FILL: Record<string, string> = {
   fr: "#3b82f6",
   de: "#eab308",
   ja: "#f43f5e",
-  it: "#22c55e",
+  it: "#14b8a6",
   pt: "#a855f7",
 };
 
@@ -39,7 +39,7 @@ const LANG_STROKE: Record<string, string> = {
   fr: "#93c5fd",
   de: "#fde047",
   ja: "#fda4af",
-  it: "#86efac",
+  it: "#5eead4",
   pt: "#c4b5fd",
 };
 
@@ -481,10 +481,6 @@ function GlobeMesh({ selectedLanguageCode, onLanguageClick, zoomTarget }: GlobeM
       camera.position.z += (2.2 - camera.position.z) * ease * delta * 4;
     } else {
       zoomStart.current = null;
-      // ── Normal mode — only touch group rotation, NEVER the camera ──
-      if (!userDragging.current) {
-        groupRef.current.rotation.y += delta * 0.08;
-      }
     }
   });
 
@@ -550,6 +546,7 @@ interface GlobeProps {
   onLanguageClick: (code: string) => void;
   zoomTarget?: { lat: number; lng: number } | null;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export function Globe({
@@ -557,11 +554,12 @@ export function Globe({
   onLanguageClick,
   zoomTarget = null,
   className = "",
+  style,
 }: GlobeProps) {
   return (
-    <div className={className} style={{ aspectRatio: "1 / 1" }}>
+    <div className={className} style={{ width: "100%", height: "100%", ...style }}>
       <Canvas
-        camera={{ position: [0, 0, 3.8], fov: 45 }}
+        camera={{ position: [0, 0, 5.0], fov: 45 }}
         style={{ background: "transparent" }}
         gl={{ antialias: true, alpha: true }}
       >

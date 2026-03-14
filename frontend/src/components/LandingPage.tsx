@@ -53,7 +53,7 @@ export function LandingPage({ onStart }: Props) {
       </nav>
 
       {/* Hero */}
-      <section className="relative h-screen flex flex-col items-center overflow-hidden">
+      <section className="relative h-screen flex flex-col items-center">
         {/* Title */}
         <div className="relative z-10 text-center mt-16 sm:mt-20 px-6">
           <h1 className="text-[clamp(1.6rem,4.5vw,3rem)] font-bold tracking-[-0.03em] leading-[1.1]">
@@ -64,16 +64,15 @@ export function LandingPage({ onStart }: Props) {
           </p>
         </div>
 
-        {/* Globe — centered, square */}
-        <div className="flex-1 flex items-center justify-center w-full min-h-0 py-4">
-          <div className="w-[min(65vh,85vw)] max-w-[640px]">
-            <Globe
-              selectedLanguageCode={selectedLanguage?.code ?? null}
-              onLanguageClick={handleLanguageClick}
-              zoomTarget={zoomTarget}
-              className="w-full"
-            />
-          </div>
+        {/* Globe — fills available hero space */}
+        <div className="flex-1 w-full min-h-0 flex items-center justify-center py-4">
+          <Globe
+            selectedLanguageCode={selectedLanguage?.code ?? null}
+            onLanguageClick={handleLanguageClick}
+            zoomTarget={zoomTarget}
+            className="h-full"
+            style={{ aspectRatio: "1 / 1", maxHeight: "100%" }}
+          />
         </div>
 
         {/* Language buttons — bottom of hero */}
