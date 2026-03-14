@@ -31,6 +31,10 @@ export default function App() {
   const handleNavigate = useCallback((placeName: string, lat: number, lng: number) => {
     console.log(`[navigate] Moving to ${placeName} (${lat}, ${lng})`);
     streetViewRef.current?.moveTo(lat, lng);
+    // After the panorama loads, look toward the destination so the user
+    // faces the place. This also ensures the backend's next POV update
+    // has the correct heading for vision-based label placement.
+    setTimeout(() => streetViewRef.current?.lookAt(lat, lng), 2000);
   }, []);
 
   const session = useGeminiSession(

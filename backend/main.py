@@ -9,7 +9,9 @@ WebSocket endpoint /ws/session handles:
 
 import asyncio
 import json
+import math
 import os
+import time
 from typing import Any
 
 from dotenv import load_dotenv
@@ -21,8 +23,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from gemini_client import GeminiLiveSession
 from places_client import nearby_search, text_search, haversine_distance
-from context_builder import build_location_update
+from context_builder import build_location_update, build_arrival_context
 from language_config import build_system_prompt
+from vision_locate import vision_locate_place
 
 MOVEMENT_THRESHOLD_METERS = 30  # minimum move to trigger Places API call (~100ft)
 
@@ -106,6 +109,9 @@ async def session_endpoint(
 
     # Buffer recent agent speech for place name matching
     agent_text_buffer: list[str] = []
+    # Cooldown: suppress transcript-based highlights right after navigation
+    # so the destination marker doesn't get immediately replaced
+    navigate_cooldown_until: float = 0.0
 
     async def on_transcript(role: str, text: str):
         try:
@@ -116,7 +122,8 @@ async def session_endpoint(
             pass
 
         # Detect place mentions in agent speech → trigger vision highlight
-        if role == "agent" and cached_places:
+        # Skip during post-navigation cooldown so we don't replace the destination marker
+        if role == "agent" and cached_places and time.time() > navigate_cooldown_until:
             agent_text_buffer.append(text)
             # Keep buffer to last ~500 chars to catch names split across chunks
             while sum(len(t) for t in agent_text_buffer) > 500:
@@ -156,6 +163,9 @@ async def session_endpoint(
             pass
 
     async def on_navigate(place_name: str, lat: float, lng: float):
+        """Called from Gemini tool handler — must return FAST so the tool
+        response gets back to Gemini before it times out (1008/1011)."""
+        nonlocal last_position, navigate_cooldown_until
         try:
             await websocket.send_text(
                 json.dumps({
@@ -168,6 +178,80 @@ async def session_endpoint(
             print(f"[ws] navigate to {place_name} ({lat}, {lng})")
         except Exception as e:
             print(f"[ws] ERROR sending navigate: {e}")
+            return
+
+        # Suppress transcript-based highlights so the destination marker
+        # doesn't get replaced by a casual mention of another place.
+        navigate_cooldown_until = time.time() + 8
+        agent_text_buffer.clear()
+        last_position = (lat, lng)
+
+        # All slow work (places fetch, vision, highlight, context) runs
+        # in the background so we don't block the Gemini tool response.
+        asyncio.create_task(_post_navigate(place_name, lat, lng))
+
+    async def _post_navigate(place_name: str, lat: float, lng: float):
+        """Background task: fetch places, vision-locate, highlight, inject context."""
+        nonlocal navigate_cooldown_until
+        try:
+            # Fetch nearby places at destination
+            places = await nearby_search(lat, lng, language_code=lang)
+            print(f"[navigate] fetched {len(places)} places at destination: {[p.get('name','?') for p in places[:3]]}")
+            cached_places.clear()
+            cached_places.extend(places)
+
+            # Find the destination in nearby results for better coords
+            highlight_lat, highlight_lng = lat, lng
+            highlight_desc = ""
+            name_lower = place_name.lower()
+            for p in places:
+                pn = p.get("name", "").lower()
+                if pn == name_lower or name_lower in pn or pn in name_lower:
+                    highlight_lat = p.get("lat", lat)
+                    highlight_lng = p.get("lng", lng)
+                    highlight_desc = p.get("summary", "")
+                    break
+                words = [w for w in name_lower.split() if len(w) > 4]
+                if words and any(w in pn for w in words):
+                    highlight_lat = p.get("lat", lat)
+                    highlight_lng = p.get("lng", lng)
+                    highlight_desc = p.get("summary", "")
+                    break
+
+            # Calculate heading from camera toward the place
+            dist = haversine_distance(lat, lng, highlight_lat, highlight_lng)
+            if dist > 5:
+                phi1 = math.radians(lat)
+                phi2 = math.radians(highlight_lat)
+                dl = math.radians(highlight_lng - lng)
+                x = math.sin(dl) * math.cos(phi2)
+                y = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(dl)
+                nav_heading = (math.degrees(math.atan2(x, y)) + 360) % 360
+            else:
+                nav_heading = last_pov["heading"]
+
+            # Set POV so vision call captures the right direction
+            last_pov["heading"] = nav_heading
+            last_pov["pitch"] = 5.0
+
+            # Wait for the frontend panorama to load and camera to pan
+            await asyncio.sleep(2.5)
+
+            # Send highlight with vision-based placement
+            await _send_highlight(
+                place_name, highlight_desc,
+                place_lat=highlight_lat, place_lng=highlight_lng,
+                force=True,
+            )
+
+            # Inject arrival context into Gemini
+            context_msg = build_arrival_context(
+                places, place_name, lang,
+                user_lat=lat, user_lng=lng, user_heading=nav_heading,
+            )
+            await gemini.send_context(context_msg)
+        except Exception as e:
+            print(f"[post_navigate] ERROR: {e}")
 
     last_position: tuple[float, float] | None = None
     last_pov: dict[str, float] = {"heading": 0.0, "pitch": 0.0, "zoom": 1.0}
@@ -181,13 +265,14 @@ async def session_endpoint(
         description: str,
         place_lat: float | None = None,
         place_lng: float | None = None,
+        force: bool = False,
+        use_vision: bool = True,
     ) -> None:
-        """Send a single highlight with lat/lng for bearing-based positioning."""
-        import time
+        """Send a highlight. force=True skips dedup. use_vision=True tries Gemini Flash."""
         now = time.time()
-        # Dedup check
-        if place_name.lower() in recent_highlights and now - recent_highlights[place_name.lower()] < 15:
-            return
+        if not force:
+            if place_name.lower() in recent_highlights and now - recent_highlights[place_name.lower()] < 15:
+                return
         recent_highlights[place_name.lower()] = now
 
         msg: dict[str, Any] = {
@@ -199,7 +284,19 @@ async def session_endpoint(
             msg["lat"] = place_lat
             msg["lng"] = place_lng
 
-        print(f"[highlight] sending '{place_name}' at ({place_lat}, {place_lng})")
+        # Use vision to get precise heading/pitch for the label
+        if use_vision and last_position:
+            result = await vision_locate_place(
+                place_name,
+                last_position[0], last_position[1],
+                last_pov["heading"], last_pov["pitch"],
+            )
+            if result:
+                target_heading, target_pitch = result
+                msg["target_heading"] = target_heading
+                msg["target_pitch"] = target_pitch
+
+        print(f"[highlight] sending '{place_name}' heading={msg.get('target_heading')} pitch={msg.get('target_pitch')} force={force}")
         try:
             await websocket.send_text(json.dumps(msg))
         except Exception as e:
@@ -268,7 +365,10 @@ async def session_endpoint(
                         # Cache for transcript-based place detection
                         cached_places.clear()
                         cached_places.extend(places)
-                        context_msg = build_location_update(places, lat, lng, lang)
+                        context_msg = build_location_update(
+                            places, lat, lng, lang,
+                            user_heading=last_pov["heading"],
+                        )
                         await gemini.send_context(context_msg)
                         await websocket.send_text(
                             json.dumps({"type": "status", "message": "context_updated"})

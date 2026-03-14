@@ -12,7 +12,8 @@ export interface HighlightInfo {
   description: string;
   lat?: number;
   lng?: number;
-  target_pitch?: number; // vision-refined vertical angle for the label
+  target_heading?: number; // vision-refined horizontal angle (absolute degrees)
+  target_pitch?: number;   // vision-refined vertical angle (absolute degrees)
 }
 
 interface Props {
@@ -68,8 +69,10 @@ export const StreetView = forwardRef<StreetViewHandle, Props>(function StreetVie
 
     const targetLat = highlight?.lat;
     const targetLng = highlight?.lng;
-    // Vision-refined pitch (if available), otherwise default to 8° above horizon
-    const pitchTarget = highlight?.target_pitch ?? 8;
+    // Vision-refined angles (absolute heading/pitch from Gemini Flash)
+    const visionHeading = highlight?.target_heading;
+    const visionPitch = highlight?.target_pitch;
+    const hasVision = visionHeading != null && visionPitch != null;
 
     const update = () => {
       const label = labelRef.current;
@@ -79,39 +82,49 @@ export const StreetView = forwardRef<StreetViewHandle, Props>(function StreetVie
       if (!container) { label.style.opacity = "0"; return; }
       const { width, height } = container.getBoundingClientRect();
 
-      if (targetLat == null || targetLng == null) {
-        // No coordinates — show centered at top of viewport
+      if (!hasVision && (targetLat == null || targetLng == null)) {
+        // No coordinates and no vision — show centered at top of viewport
         label.style.left = `${width / 2}px`;
         label.style.top = "60px";
         label.style.opacity = "1";
         return;
       }
 
-      const pos = pano.getPosition();
       const pov = pano.getPov();
       const zoom = pano.getZoom() ?? 1;
-      if (!pos) { label.style.opacity = "0"; return; }
-
-      // Bearing from user to target
-      const lat1 = pos.lat() * Math.PI / 180;
-      const lat2 = targetLat * Math.PI / 180;
-      const dLng = (targetLng - pos.lng()) * Math.PI / 180;
-      const y = Math.sin(dLng) * Math.cos(lat2);
-      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-      const bearing = ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
-
-      // Angular offset from current heading
-      let deltaH = bearing - pov.heading;
-      if (deltaH > 180) deltaH -= 360;
-      if (deltaH < -180) deltaH += 360;
 
       // FOV from zoom level (zoom 0 = 180°, zoom 1 = 90°, etc.)
       const hFov = 180 / Math.pow(2, zoom);
       const vFov = hFov * (height / width);
 
+      let placeHeading: number;
+      let placePitch: number;
+
+      if (hasVision) {
+        // Vision-refined: use exact heading/pitch from Gemini Flash
+        placeHeading = visionHeading;
+        placePitch = visionPitch;
+      } else {
+        // Fallback: bearing from user position to target lat/lng
+        const pos = pano.getPosition();
+        if (!pos) { label.style.opacity = "0"; return; }
+        const lat1 = pos.lat() * Math.PI / 180;
+        const lat2 = targetLat! * Math.PI / 180;
+        const dLng = (targetLng! - pos.lng()) * Math.PI / 180;
+        const y = Math.sin(dLng) * Math.cos(lat2);
+        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+        placeHeading = ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+        placePitch = 8; // default above horizon
+      }
+
+      // Angular offset from current heading
+      let deltaH = placeHeading - pov.heading;
+      if (deltaH > 180) deltaH -= 360;
+      if (deltaH < -180) deltaH += 360;
+
       // Screen position
       const screenX = (deltaH / hFov + 0.5) * width;
-      const deltaV = pitchTarget - pov.pitch;
+      const deltaV = placePitch - pov.pitch;
       const screenY = (-deltaV / vFov + 0.5) * height;
 
       // Only show if in front of camera (within horizontal FOV)
