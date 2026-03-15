@@ -44,9 +44,9 @@ export function LandingPage({ onStart }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#09090b] text-white overflow-x-hidden overflow-y-auto">
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between">
+      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between bg-[#09090b]/80 backdrop-blur-sm">
         <span className="text-sm font-semibold tracking-[0.15em] uppercase">
           PathGlot
         </span>
@@ -65,13 +65,12 @@ export function LandingPage({ onStart }: Props) {
         </div>
 
         {/* Globe — fills available hero space */}
-        <div className="flex-1 w-full min-h-0 flex items-center justify-center py-4">
+        <div className="flex-1 w-full min-h-0 flex items-center justify-center py-2 sm:py-4">
           <Globe
             selectedLanguageCode={selectedLanguage?.code ?? null}
             onLanguageClick={handleLanguageClick}
             zoomTarget={zoomTarget}
-            className="h-full"
-            style={{ aspectRatio: "1 / 1", maxHeight: "100%" }}
+            className="h-full w-full max-w-[min(100%,80vh)]"
           />
         </div>
 
@@ -80,7 +79,7 @@ export function LandingPage({ onStart }: Props) {
           <p className="text-[10px] tracking-[0.25em] uppercase text-zinc-600">
             Choose a language
           </p>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap max-w-sm sm:max-w-none">
             {LANGUAGES.map((lang) => {
               const isActive = selectedLanguage?.code === lang.code;
               return (

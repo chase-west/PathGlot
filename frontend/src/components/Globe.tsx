@@ -70,14 +70,6 @@ function latLngToVec3(lat: number, lng: number, r: number): THREE.Vector3 {
   );
 }
 
-
-
-
-function angleDiff(from: number, to: number): number {
-  let d = ((to - from) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
-  return d;
-}
-
 // ── Earth textures (color + displacement) ──
 
 function createEarthTextures(w: number, h: number): {
@@ -461,6 +453,16 @@ function GlobeMesh({ selectedLanguageCode, onLanguageClick, zoomTarget }: GlobeM
     return { earthTex: ct, dispTex: dt };
   }, []);
 
+  // Pull camera back on narrow viewports so globe doesn't clip edges
+  const { size } = useThree();
+  useEffect(() => {
+    if (!zoomTarget) {
+      const z = size.width < 640 ? 5.8 : 5.0;
+      camera.position.setZ(z);
+      camera.updateProjectionMatrix();
+    }
+  }, [size.width, zoomTarget, camera]);
+
   const zoomStart = useRef<number | null>(null);
   const zoomInitialCamPos = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 5));
   const zoomTargetCamPos = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 5));
@@ -597,8 +599,9 @@ export function Globe({
     <div className={className} style={{ width: "100%", height: "100%", ...style }}>
       <Canvas
         camera={{ position: [0, 0, 5.0], fov: 45 }}
-        style={{ background: "transparent" }}
-        gl={{ antialias: true, alpha: true }}
+        style={{ background: "transparent", touchAction: "none" }}
+        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+        dpr={[1, 2]}
       >
         <ambientLight intensity={0.5} />
         <directionalLight position={[5, 3, 5]} intensity={1.2} color="#ffffff" />

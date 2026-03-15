@@ -137,34 +137,34 @@ export default function App() {
         <div className="session-enter-overlay" />
       )}
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-black/60 backdrop-blur-sm border-b border-zinc-800 z-10 shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-black/60 backdrop-blur-sm border-b border-zinc-800 z-10 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={handleEnd}
-            className="text-slate-400 hover:text-white transition-colors p-1"
+            className="text-slate-400 hover:text-white transition-colors p-1 shrink-0"
             title="End session"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
           </button>
-          <div>
-            <span className="font-semibold text-white text-sm">
+          <div className="min-w-0">
+            <span className="font-semibold text-white text-sm truncate">
               {language.flag} {city.name}
             </span>
-            <span className="text-slate-400 text-xs ml-2">
+            <span className="text-slate-400 text-xs ml-2 hidden sm:inline">
               · Guide: {config.guideName} · {language.name}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Connection status pill */}
           <StatusPill status={session.status} />
 
           {/* Reconnect button (only after disconnect/error) */}
           {(session.status === "closed" || session.status === "error") && (
-            <button onClick={handleConnect} className="btn-primary text-sm py-1.5 px-4">
+            <button onClick={handleConnect} className="btn-primary text-sm py-1.5 px-3 sm:px-4">
               Reconnect
             </button>
           )}
@@ -174,7 +174,8 @@ export default function App() {
             onClick={() => setShowLog((v) => !v)}
             className={`btn-secondary text-xs ${showLog ? "bg-white/20" : ""}`}
           >
-            Transcript
+            <span className="hidden sm:inline">Transcript</span>
+            <span className="sm:hidden">Log</span>
           </button>
         </div>
       </div>
