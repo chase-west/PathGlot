@@ -2,6 +2,16 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { AudioPlayer, float32ToBase64Pcm, CAPTURE_SAMPLE_RATE } from "../lib/audio";
 import type { City } from "../lib/cities";
 
+const SPEECH_LOCALES: Record<string, string> = {
+  es: "es-ES",
+  fr: "fr-FR",
+  de: "de-DE",
+  ja: "ja-JP",
+  it: "it-IT",
+  pt: "pt-BR",
+};
+
+
 const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string | undefined) || "http://localhost:8000";
 const BACKEND_WS_URL = BACKEND_URL.replace(/^http/, "ws");
 
@@ -54,6 +64,7 @@ export function useGeminiSession({
   const audioContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const speechRecRef = useRef<SpeechRecognition | null>(null);
   // Ref-based agent speaking tracker accessible from onaudioprocess callback
   const agentSpeakingRef = useRef(false);
   const onNavigateRef = useRef(onNavigate);
@@ -125,7 +136,11 @@ export function useGeminiSession({
             const updated = [...prev];
             updated[updated.length - 1] = {
               ...last,
-              text: last.text + msg.text,
+              // Agent output_transcription streams word-by-word deltas → append.
+              // User input_transcription sends accumulated ASR results (each chunk
+              // is the full running transcription, not a delta) → replace to avoid
+              // showing every interim state concatenated as garbled text.
+              text: msg.role === "agent" ? last.text + msg.text : msg.text,
             };
             return updated;
           }
@@ -224,12 +239,59 @@ export function useGeminiSession({
       muteNode.connect(ctx.destination);
 
       setIsMicActive(true);
+
+      // Web Speech API for user transcript — proper language support,
+      // replaces Gemini's input_audio_transcription which mis-detects language
+      const SpeechRecognitionAPI =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognitionAPI) {
+        const rec: SpeechRecognition = new SpeechRecognitionAPI();
+        rec.lang = SPEECH_LOCALES[languageCode] ?? languageCode;
+        rec.interimResults = true;
+        rec.continuous = true;
+        rec.onresult = (e: SpeechRecognitionEvent) => {
+          let interim = "";
+          let final = "";
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            const t = e.results[i][0].transcript;
+            if (e.results[i].isFinal) final += t;
+            else interim += t;
+          }
+          const text = final || interim;
+          if (!text.trim()) return;
+          setTranscript((prev) => {
+            const last = prev[prev.length - 1];
+            // Always update the existing user bubble if last message is from user —
+            // don't use turnSealedRef here because Web Speech final results arrive
+            // after the agent starts responding (sealing the turn), which would
+            // otherwise create a duplicate bubble.
+            if (last && last.role === "user") {
+              const updated = [...prev];
+              updated[updated.length - 1] = { ...last, text, pending: !final };
+              return updated;
+            }
+            turnSealedRef.current = false;
+            return [
+              ...prev,
+              { id: crypto.randomUUID(), role: "user", text, timestamp: Date.now(), pending: !final },
+            ];
+          });
+        };
+        rec.onend = () => {
+          // Auto-restart so it stays active for the whole session
+          if (speechRecRef.current) {
+            try { rec.start(); } catch { /* already started */ }
+          }
+        };
+        speechRecRef.current = rec;
+        rec.start();
+      }
     } catch (err) {
       setError(
         `Microphone access denied: ${err instanceof Error ? err.message : String(err)}`
       );
     }
-  }, [isMicActive]);
+  }, [isMicActive, languageCode]);
 
   // Stop microphone capture
   const stopMic = useCallback(() => {
@@ -242,6 +304,9 @@ export function useGeminiSession({
     sourceRef.current = null;
     micStreamRef.current = null;
     audioContextRef.current = null;
+
+    speechRecRef.current?.stop();
+    speechRecRef.current = null;
 
     setIsMicActive(false);
   }, []);

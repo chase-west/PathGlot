@@ -63,6 +63,11 @@ def get_voice(language_code: str, guide_name: str) -> str:
     gender = GUIDE_GENDERS.get(guide_name, "female")
     return cfg[f"{gender}_voice"]
 
+
+def get_locale(language_code: str) -> str:
+    """Return the BCP-47 locale for a language code (e.g. 'es' → 'es-ES')."""
+    return LANGUAGE_CONFIG.get(language_code, LANGUAGE_CONFIG["es"])["locale"]
+
 SYSTEM_PROMPT_TEMPLATE = """You are {guide_name}, an enthusiastic and chatty local tour guide in {city_name}.
 
 LANGUAGE: RESPOND IN {language_name}. YOU MUST RESPOND UNMISTAKABLY IN {language_name}.

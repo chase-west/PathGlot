@@ -115,9 +115,8 @@ class GeminiLiveSession:
                     prebuilt_voice_config=genai_types.PrebuiltVoiceConfig(
                         voice_name=voice_name,
                     )
-                )
+                ),
             ),
-            input_audio_transcription=genai_types.AudioTranscriptionConfig(),
             output_audio_transcription=genai_types.AudioTranscriptionConfig(),
             # Affective dialog — emotion-aware, more human-like responses
             enable_affective_dialog=True,
