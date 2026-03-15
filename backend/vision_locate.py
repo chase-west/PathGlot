@@ -62,11 +62,7 @@ async def locate_place_in_image(
     if not GEMINI_API_KEY:
         return None
 
-    client = genai.Client(
-        vertexai=True,
-        project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
-        location=os.environ.get("CLOUD_RUN_REGION", "us-central1"),
-    )
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
     try:
         response = await client.aio.models.generate_content(
@@ -128,6 +124,9 @@ async def vision_identify_from_transcript(
 
     Returns (place_name, heading, pitch) or None.
     """
+    if not GEMINI_API_KEY:
+        return None
+
     image = await fetch_streetview_image(
         lat, lng, heading, pitch,
         fov=CAPTURE_FOV, size=CAPTURE_SIZE,
@@ -136,14 +135,7 @@ async def vision_identify_from_transcript(
         print("[vision_identify] no image available")
         return None
 
-    if not GEMINI_API_KEY:
-        return None
-
-    client = genai.Client(
-        vertexai=True,
-        project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
-        location=os.environ.get("CLOUD_RUN_REGION", "us-central1"),
-    )
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
     try:
         response = await client.aio.models.generate_content(
