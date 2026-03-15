@@ -124,7 +124,7 @@ async def vision_identify_view(
     if not GEMINI_API_KEY:
         return None
 
-    image = await fetch_streetview_image(lat, lng, heading, pitch, fov=90, size="640x480")
+    image = await fetch_streetview_image(lat, lng, heading, pitch, fov=60, size="640x480")
     if not image:
         print("[vision_identify] no image available")
         return None
@@ -146,12 +146,14 @@ async def vision_identify_view(
                         genai_types.Part(
                             text=(
                                 "This is a Street View image of what a user is currently looking at. "
-                                "Identify the most prominent thing visible — artwork, sculpture, building facade, "
-                                "landmark, sign, or architectural feature. "
-                                "Be specific: if it's a painting, name the work and artist. "
-                                "If it's a sculpture or monument, name it. "
-                                "If it's a building or street feature, describe it precisely. "
-                                "Respond in 1-2 sentences. If nothing identifiable, respond with: UNKNOWN"
+                                "Identify the most notable and interesting thing visible — prioritize: "
+                                "named stores or brands (e.g. Levi's, H&M), named buildings, monuments, statues, or landmarks. "
+                                "IGNORE generic street furniture like lampposts, benches, traffic signs, or parked cars — "
+                                "only mention those if there is truly nothing else identifiable. "
+                                "Respond in this exact format:\n"
+                                "NAME: <short name, 1-5 words, e.g. 'Levi's Store' or 'Font de Canaletes'>\n"
+                                "DESC: <1-2 sentence description>\n"
+                                "If nothing notable or identifiable, respond with exactly: UNKNOWN"
                             )
                         ),
                     ],
@@ -161,8 +163,20 @@ async def vision_identify_view(
         text = response.text.strip()
         if "UNKNOWN" in text or not text:
             return None
-        print(f"[vision_identify] identified: {text!r}")
-        return text
+        # Parse "NAME: ...\nDESC: ..." format
+        name = None
+        desc = None
+        for line in text.splitlines():
+            if line.startswith("NAME:"):
+                name = line[5:].strip()
+            elif line.startswith("DESC:"):
+                desc = line[5:].strip()
+        if not name:
+            # Fallback: treat entire response as description
+            name = text.split(".")[0][:40]
+            desc = text
+        print(f"[vision_identify] identified: {name!r} — {desc!r}")
+        return (name, desc or "")
     except Exception as e:
         print(f"[vision_identify] Gemini Flash error: {e}")
         return None

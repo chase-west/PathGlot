@@ -14,10 +14,6 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 # v1alpha API version unlocks affective dialog and proactive audio.
 GEMINI_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
 
-# Tool declarations — only navigate_to_place.
-# highlight_place was removed because a second tool destabilizes the
-# preview audio model (causes 1008 errors).  Place highlighting is now
-# detected from output transcription text instead.
 TOOLS = genai_types.Tool(
     function_declarations=[
         genai_types.FunctionDeclaration(
@@ -38,6 +34,19 @@ TOOLS = genai_types.Tool(
                 required=["query"],
             ),
         ),
+        genai_types.FunctionDeclaration(
+            name="identify_current_view",
+            description=(
+                "Use computer vision to identify what the user is currently looking at in Street View. "
+                "Call this when the user asks what something is, points at something, or asks about "
+                "something visible that isn't in your nearby places list — stores, statues, signs, "
+                "architectural features, street art, etc."
+            ),
+            parameters=genai_types.Schema(
+                type="OBJECT",
+                properties={},
+            ),
+        ),
     ]
 )
 
@@ -54,6 +63,7 @@ class GeminiLiveSession:
         on_error: Callable[[str], Awaitable[None]],
         on_navigate: Callable[[str, float, float], Awaitable[None]] | None = None,
         resolve_place: Callable[[str], Awaitable[dict[str, Any] | None]] | None = None,
+        identify_view: Callable[[], Awaitable[tuple[str, str] | None]] | None = None,
         guide_name: str = "",
     ):
         self.system_prompt = system_prompt
@@ -66,6 +76,7 @@ class GeminiLiveSession:
         self.on_error = on_error
         self.on_navigate = on_navigate
         self.resolve_place = resolve_place
+        self.identify_view = identify_view
 
         # v1alpha required for enable_affective_dialog and proactivity
         self._client = genai.Client(
@@ -303,6 +314,27 @@ class GeminiLiveSession:
                         )
                     )
                     print(f"[tool_call] no results for '{query}'")
+            elif fc.name == "identify_current_view" and self.identify_view:
+                result = await self.identify_view()
+                if result:
+                    name, description = result
+                    responses.append(
+                        genai_types.FunctionResponse(
+                            name=fc.name,
+                            id=fc.id,
+                            response={"name": name, "description": description},
+                        )
+                    )
+                    print(f"[tool_call] identify_current_view → {name!r}")
+                else:
+                    responses.append(
+                        genai_types.FunctionResponse(
+                            name=fc.name,
+                            id=fc.id,
+                            response={"error": "Could not identify anything in the current view."},
+                        )
+                    )
+                    print("[tool_call] identify_current_view → nothing found")
             else:
                 responses.append(
                     genai_types.FunctionResponse(

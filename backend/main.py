@@ -143,36 +143,6 @@ async def session_endpoint(
         if role == "user":
             recent_highlights.clear()
             agent_text_buffer.clear()
-            # Vision identify: fire when user asks "what is that?" in any language.
-            # Common patterns: "qué es", "what is", "cos'è", "was ist", "qu'est-ce",
-            # "dime", "no sé", "tell me", "I don't know", "what's that"
-            _IDENTIFY_TRIGGERS = [
-                "que es", "qué es", "what is", "what's that", "what's this",
-                "cos è", "cos'è", "was ist", "qu'est-ce", "c'est quoi",
-                "no se", "no sé", "i don't know", "dime", "tell me what",
-                "これは何", "何ですか", "che cos", "che cosa",
-            ]
-            nonlocal last_vision_identify_time
-            user_norm = _normalize(text)
-            if (
-                last_position
-                and time.time() - last_vision_identify_time > 10
-                and any(t in user_norm for t in _IDENTIFY_TRIGGERS)
-            ):
-                last_vision_identify_time = time.time()
-                # Tell Gemini to WAIT for the vision result before answering.
-                # Without this, Gemini races ahead and guesses from the places
-                # list (e.g. "it's the Gran Café!") before vision can identify
-                # what the user is actually looking at.
-                asyncio.create_task(gemini.send_context(
-                    "[VISION PROCESSING] The user is asking about what they see. "
-                    "A vision analysis of their current view is running RIGHT NOW. "
-                    "DO NOT answer yet — wait for the [VISION] result. "
-                    "Do NOT guess from the nearby places list. The user may be "
-                    "looking at something not in the Places API (a statue, fountain, "
-                    "architectural detail, etc.)."
-                ))
-                asyncio.create_task(_vision_identify_and_inject())
 
         if role == "agent" and cached_places and time.time() > navigate_cooldown_until and not highlight_fired_this_turn:
             agent_text_buffer.append(text)
@@ -298,14 +268,6 @@ async def session_endpoint(
                 use_vision=False,
             )
 
-            # Wait for panorama to load, then refine with vision
-            await asyncio.sleep(2.0)
-            asyncio.create_task(
-                _refine_highlight_with_vision(
-                    place_name, highlight_desc, highlight_lat, highlight_lng
-                )
-            )
-
             # Inject arrival context into Gemini
             context_msg = build_arrival_context(
                 places, place_name, lang,
@@ -324,9 +286,6 @@ async def session_endpoint(
     # Heading context re-injection: track last heading sent to Gemini
     last_injected_heading: float = 0.0
     last_heading_inject_time: float = 0.0
-    # Vision identify: throttle to once per 10s
-    last_vision_identify_time: float = 0.0
-
     async def _send_highlight(
         place_name: str,
         description: str,
@@ -360,8 +319,9 @@ async def session_endpoint(
             print(f"[ws] ERROR sending highlight: {e}")
             return
 
-        # Refine with vision in the background — sends an updated highlight
-        if use_vision and last_position:
+        # Only refine with vision if we don't have Places API coordinates —
+        # when lat/lng are known, bearing math is already accurate enough.
+        if use_vision and last_position and (place_lat is None or place_lng is None):
             asyncio.create_task(
                 _refine_highlight_with_vision(place_name, description, place_lat, place_lng)
             )
@@ -396,30 +356,26 @@ async def session_endpoint(
         except Exception as e:
             print(f"[highlight] vision refinement error: {e}")
 
-    async def _vision_identify_and_inject() -> None:
-        """Background task: capture current view, identify it with Gemini Flash,
-        inject the result as context so the guide can answer the user's question."""
+    async def identify_view() -> tuple[str, str] | None:
+        """Called by Gemini tool call — capture current view and identify what's visible."""
         if not last_position:
-            return
-        try:
-            description = await vision_identify_view(
-                last_position[0], last_position[1],
-                last_pov["heading"], last_pov["pitch"],
-            )
-            if description:
-                from context_builder import _language_name
-                context_msg = (
-                    f"[VISION] The user asked what they're looking at. "
-                    f"Based on their current Street View, they are looking at: {description}. "
-                    f"THIS is what the user is asking about — NOT any place from the nearby places list. "
-                    f"Tell them about this in {_language_name(lang)} — describe it, give context, share something interesting about it."
-                )
-                await gemini.send_context(context_msg)
-                print(f"[vision_identify] injected context: {description!r}")
-            else:
-                print("[vision_identify] nothing identifiable in view")
-        except Exception as e:
-            print(f"[vision_identify] error: {e}")
+            return None
+        result = await vision_identify_view(
+            last_position[0], last_position[1],
+            last_pov["heading"], last_pov["pitch"],
+        )
+        if result:
+            name, description = result
+            # Send a label to the frontend
+            try:
+                await websocket.send_text(json.dumps({
+                    "type": "highlight",
+                    "name": name,
+                    "description": description,
+                }))
+            except Exception:
+                pass
+        return result
 
     async def resolve_place(query: str) -> dict | None:
         """Called by Gemini tool call — resolve a place by name via Text Search."""
@@ -438,6 +394,7 @@ async def session_endpoint(
         on_error=on_error,
         on_navigate=on_navigate,
         resolve_place=resolve_place,
+        identify_view=identify_view,
         guide_name=guide,
     )
 
