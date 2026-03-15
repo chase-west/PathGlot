@@ -12,12 +12,7 @@
     <marker id="arrowGray" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="#71717a"/>
     </marker>
-    <marker id="arrowGrayBack" markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto">
-      <path d="M8,0 L8,6 L0,3 z" fill="#71717a"/>
-    </marker>
-    <marker id="arrowDarkBack" markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto">
-      <path d="M8,0 L8,6 L0,3 z" fill="#18181b"/>
-    </marker>
+
   </defs>
 
   <!-- Background -->
@@ -191,13 +186,13 @@
 
   <!-- Browser → Backend -->
   <line x1="350" y1="218" x2="420" y2="218" stroke="#09090b" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowDark)"/>
-  <line x1="420" y1="232" x2="350" y2="232" stroke="#71717a" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowGrayBack)"/>
+  <line x1="420" y1="232" x2="350" y2="232" stroke="#71717a" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowGray)"/>
   <text x="385" y="212" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#09090b" text-anchor="middle" font-weight="500">audio · pos · POV</text>
   <text x="385" y="246" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#71717a" text-anchor="middle" font-weight="500">audio · labels · nav</text>
 
   <!-- Backend → Gemini Live -->
   <line x1="762" y1="206" x2="872" y2="168" stroke="#09090b" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowDark)"/>
-  <line x1="872" y1="185" x2="762" y2="224" stroke="#71717a" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowGrayBack)"/>
+  <line x1="872" y1="185" x2="762" y2="224" stroke="#71717a" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowGray)"/>
   <text x="824" y="180" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#09090b" text-anchor="middle" font-weight="500">PCM audio + context</text>
   <text x="824" y="228" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#71717a" text-anchor="middle" font-weight="500">audio + transcripts</text>
 
