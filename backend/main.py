@@ -23,9 +23,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from gemini_client import GeminiLiveSession
 from places_client import nearby_search, text_search, haversine_distance
-from context_builder import build_location_update, build_arrival_context
+from context_builder import build_location_update, build_arrival_context, build_heading_update
 from language_config import build_system_prompt
-from vision_locate import vision_locate_place
+from vision_locate import vision_locate_place, vision_identify_view
 
 MOVEMENT_THRESHOLD_METERS = 30  # minimum move to trigger Places API call (~100ft)
 
@@ -143,6 +143,36 @@ async def session_endpoint(
         if role == "user":
             recent_highlights.clear()
             agent_text_buffer.clear()
+            # Vision identify: fire when user asks "what is that?" in any language.
+            # Common patterns: "qué es", "what is", "cos'è", "was ist", "qu'est-ce",
+            # "dime", "no sé", "tell me", "I don't know", "what's that"
+            _IDENTIFY_TRIGGERS = [
+                "que es", "qué es", "what is", "what's that", "what's this",
+                "cos è", "cos'è", "was ist", "qu'est-ce", "c'est quoi",
+                "no se", "no sé", "i don't know", "dime", "tell me what",
+                "これは何", "何ですか", "che cos", "che cosa",
+            ]
+            nonlocal last_vision_identify_time
+            user_norm = _normalize(text)
+            if (
+                last_position
+                and time.time() - last_vision_identify_time > 10
+                and any(t in user_norm for t in _IDENTIFY_TRIGGERS)
+            ):
+                last_vision_identify_time = time.time()
+                # Tell Gemini to WAIT for the vision result before answering.
+                # Without this, Gemini races ahead and guesses from the places
+                # list (e.g. "it's the Gran Café!") before vision can identify
+                # what the user is actually looking at.
+                asyncio.create_task(gemini.send_context(
+                    "[VISION PROCESSING] The user is asking about what they see. "
+                    "A vision analysis of their current view is running RIGHT NOW. "
+                    "DO NOT answer yet — wait for the [VISION] result. "
+                    "Do NOT guess from the nearby places list. The user may be "
+                    "looking at something not in the Places API (a statue, fountain, "
+                    "architectural detail, etc.)."
+                ))
+                asyncio.create_task(_vision_identify_and_inject())
 
         if role == "agent" and cached_places and time.time() > navigate_cooldown_until and not highlight_fired_this_turn:
             agent_text_buffer.append(text)
@@ -291,6 +321,11 @@ async def session_endpoint(
     cached_places: list[dict[str, Any]] = []
     # Dedup: don't re-highlight the same place within 6 seconds
     recent_highlights: dict[str, float] = {}
+    # Heading context re-injection: track last heading sent to Gemini
+    last_injected_heading: float = 0.0
+    last_heading_inject_time: float = 0.0
+    # Vision identify: throttle to once per 10s
+    last_vision_identify_time: float = 0.0
 
     async def _send_highlight(
         place_name: str,
@@ -361,6 +396,31 @@ async def session_endpoint(
         except Exception as e:
             print(f"[highlight] vision refinement error: {e}")
 
+    async def _vision_identify_and_inject() -> None:
+        """Background task: capture current view, identify it with Gemini Flash,
+        inject the result as context so the guide can answer the user's question."""
+        if not last_position:
+            return
+        try:
+            description = await vision_identify_view(
+                last_position[0], last_position[1],
+                last_pov["heading"], last_pov["pitch"],
+            )
+            if description:
+                from context_builder import _language_name
+                context_msg = (
+                    f"[VISION] The user asked what they're looking at. "
+                    f"Based on their current Street View, they are looking at: {description}. "
+                    f"THIS is what the user is asking about — NOT any place from the nearby places list. "
+                    f"Tell them about this in {_language_name(lang)} — describe it, give context, share something interesting about it."
+                )
+                await gemini.send_context(context_msg)
+                print(f"[vision_identify] injected context: {description!r}")
+            else:
+                print("[vision_identify] nothing identifiable in view")
+        except Exception as e:
+            print(f"[vision_identify] error: {e}")
+
     async def resolve_place(query: str) -> dict | None:
         """Called by Gemini tool call — resolve a place by name via Text Search."""
         # Use the user's current position for location bias (falls back to 0,0)
@@ -429,6 +489,8 @@ async def session_endpoint(
                             user_heading=last_pov["heading"],
                         )
                         await gemini.send_context(context_msg)
+                        last_injected_heading = last_pov["heading"]
+                        last_heading_inject_time = time.time()
                         await websocket.send_text(
                             json.dumps({"type": "status", "message": "context_updated"})
                         )
@@ -436,9 +498,32 @@ async def session_endpoint(
 
                 case "pov":
                     # Street View POV update (heading/pitch/zoom)
-                    last_pov["heading"] = float(msg.get("heading", 0))
+                    new_heading = float(msg.get("heading", 0))
+                    last_pov["heading"] = new_heading
                     last_pov["pitch"] = float(msg.get("pitch", 0))
                     last_pov["zoom"] = float(msg.get("zoom", 1))
+
+                    # Re-inject direction tags when user pans >60° so Gemini
+                    # knows what's now [ahead] without waiting for a position update.
+                    # Throttled to once per 5s to avoid spamming the context queue.
+                    heading_delta = abs((new_heading - last_injected_heading + 180) % 360 - 180)
+                    now = time.time()
+                    if (
+                        heading_delta > 60
+                        and now - last_heading_inject_time > 5
+                        and cached_places
+                        and last_position
+                    ):
+                        last_injected_heading = new_heading
+                        last_heading_inject_time = now
+                        heading_ctx = build_heading_update(
+                            cached_places,
+                            last_position[0], last_position[1],
+                            new_heading,
+                            language_code=lang,
+                        )
+                        await gemini.send_context(heading_ctx)
+                        print(f"[pov] heading update injected (delta={heading_delta:.1f}°)")
 
                 case _:
                     print(f"[ws] Unknown message type: {msg.get('type')}")

@@ -5,8 +5,9 @@ from typing import Any
 
 # Prefix that tells Gemini to discard stale location context.
 _SUPERSEDE = (
-    "[LOCATION UPDATE — THIS REPLACES ALL PREVIOUS LOCATION UPDATES. "
-    "Discard any earlier nearby-places lists; only reference places from THIS message.]\n"
+    "[LOCATION UPDATE — the user has moved to a new area. "
+    "Focus your commentary on the new places listed below. "
+    "Do not proactively bring up previous locations — but if the user asks about or reflects on somewhere they just visited, you may respond naturally.]\n"
 )
 
 
@@ -84,15 +85,11 @@ def build_location_update(
 
     return (
         f"{_SUPERSEDE}"
-        f"Nearby places (verified, Google Places API):\n{places_text}\n\n"
+        f"New nearby places (verified, Google Places API):\n{places_text}\n\n"
         f"Direction tags like [ahead] or [to your left] show where each place is relative to where the user is currently looking.\n\n"
-        f"Start speaking NOW in {_language_name(language_code)} about this area — don't wait for the user. "
-        f"Pick 1-2 of the most interesting places and bring them to life. "
-        f"Say each place's FULL OFFICIAL NAME clearly (exactly as listed above) — this triggers a label on the user's screen. "
-        f"Ask the user a question to keep the conversation going. "
-        f"Only speak about places on this list. "
-        f"If the user wants to visit somewhere, use navigate_to_place. "
-        f"If the user asks about something they can see ('what is that?'), check places tagged [ahead] and say the FULL NAME — do NOT navigate."
+        f"The user has moved — naturally transition to this new area. Pick 1-2 of the most interesting places from the list above and bring them to life in {_language_name(language_code)}. "
+        f"Say each place's FULL OFFICIAL NAME (exactly as listed above) — this triggers a label on the user's screen. "
+        f"Ask the user a question to keep the conversation going."
     )
 
 
@@ -130,6 +127,27 @@ def build_arrival_context(
         f"- SEARCHING ('any bars nearby?', 'is there a Starbucks?'): match by name or type, say FULL NAME + direction, ask if they want to go there or just mark it.\n"
         f"- NAVIGATING ('take me to...'): only then use navigate_to_place.\n"
         f"CRITICAL: Always say the FULL OFFICIAL NAME of any place — this is the ONLY way a label appears on the user's screen. Never shorten or paraphrase place names."
+    )
+
+
+def build_heading_update(
+    places: list[dict[str, Any]],
+    lat: float,
+    lng: float,
+    user_heading: float,
+    language_code: str = "en",
+) -> str:
+    """
+    Lightweight context injected when the user pans significantly.
+    Refreshes direction tags so the agent knows what's now ahead/behind.
+    Does NOT supersede prior context — just updates what the user is facing.
+    """
+    places_text = _format_places(places, user_lat=lat, user_lng=lng, user_heading=user_heading)
+    return (
+        f"[HEADING UPDATE — the user has turned and is now facing a new direction. "
+        f"Updated directions for nearby places:\n{places_text}\n"
+        f"Places tagged [ahead] are what the user can currently see. "
+        f"If something interesting is [ahead], you may comment on it naturally in {_language_name(language_code)}.]"
     )
 
 

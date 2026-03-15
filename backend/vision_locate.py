@@ -110,6 +110,64 @@ async def locate_place_in_image(
         return None
 
 
+async def vision_identify_view(
+    lat: float,
+    lng: float,
+    heading: float,
+    pitch: float,
+) -> str | None:
+    """
+    Capture the user's current view and ask Gemini Flash to identify what's visible.
+    Returns a plain-language description (e.g. "Guernica by Pablo Picasso, 1937"),
+    or None if nothing identifiable or API unavailable.
+    """
+    if not GEMINI_API_KEY:
+        return None
+
+    image = await fetch_streetview_image(lat, lng, heading, pitch, fov=90, size="640x480")
+    if not image:
+        print("[vision_identify] no image available")
+        return None
+
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    try:
+        response = await client.aio.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                genai_types.Content(
+                    role="user",
+                    parts=[
+                        genai_types.Part(
+                            inline_data=genai_types.Blob(
+                                data=image,
+                                mime_type="image/jpeg",
+                            )
+                        ),
+                        genai_types.Part(
+                            text=(
+                                "This is a Street View image of what a user is currently looking at. "
+                                "Identify the most prominent thing visible — artwork, sculpture, building facade, "
+                                "landmark, sign, or architectural feature. "
+                                "Be specific: if it's a painting, name the work and artist. "
+                                "If it's a sculpture or monument, name it. "
+                                "If it's a building or street feature, describe it precisely. "
+                                "Respond in 1-2 sentences. If nothing identifiable, respond with: UNKNOWN"
+                            )
+                        ),
+                    ],
+                ),
+            ],
+        )
+        text = response.text.strip()
+        if "UNKNOWN" in text or not text:
+            return None
+        print(f"[vision_identify] identified: {text!r}")
+        return text
+    except Exception as e:
+        print(f"[vision_identify] Gemini Flash error: {e}")
+        return None
+
+
 async def vision_locate_place(
     place_name: str,
     lat: float,
