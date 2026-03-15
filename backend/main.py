@@ -23,9 +23,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from gemini_client import GeminiLiveSession
 from places_client import nearby_search, text_search, haversine_distance
-from context_builder import build_location_update, build_arrival_context, build_heading_update
+from context_builder import build_location_update, build_arrival_context
 from language_config import build_system_prompt
-from vision_locate import vision_locate_place, vision_identify_from_transcript
+from vision_locate import vision_locate_place
 
 MOVEMENT_THRESHOLD_METERS = 30  # minimum move to trigger Places API call (~100ft)
 
@@ -136,69 +136,30 @@ async def session_endpoint(
                 agent_text_buffer.pop(0)
             recent_text = _normalize("".join(agent_text_buffer))
 
-            # Score each cached place against transcript — pick the best match
-            best_match: dict[str, Any] | None = None
-            best_score: int = 0  # 0 = no match, 1 = partial, 2 = full name
-
             for p in cached_places:
                 pname = p.get("name", "")
                 if not pname or len(pname) < 3:
                     continue
+                # Try full name and individual words (>2 chars) for partial matches
+                # e.g. "Museo del Prado" → also match if agent just says "Prado"
                 name_norm = _normalize(pname)
-
-                # Google Places often has long names like "Café de Oriente - Restaurante Palacio Real Madrid"
-                # Split on common separators and try the short name first
-                name_variants = [name_norm]
-                for sep in [" - ", " | ", " · "]:
-                    if sep in name_norm:
-                        name_variants.insert(0, name_norm.split(sep)[0].strip())
-                        break
-
-                # Full name match (try short name first, then full) → highest priority
-                for variant in name_variants:
-                    if variant in recent_text:
-                        if best_score < 2:
-                            best_match = p
-                            best_score = 2
-                        break
-                if best_score == 2 and best_match == p:
-                    continue
-
-                # Partial word match against the SHORT name (before separator)
-                # to avoid diluting match ratio with subtitle words
-                short_name = name_variants[0]
-                words = [w for w in short_name.split() if len(w) > 3]
-                if not words:
-                    continue
-                hits = [w for w in words if w in recent_text]
-                if not hits:
-                    continue
-                # Need majority of distinctive words AND minimum 2 hits
-                # This prevents "oriente" alone matching "café de oriente"
-                if len(hits) >= 2 and len(hits) / len(words) > 0.5:
-                    if best_score < 1:
-                        best_match = p
-                        best_score = 1
-
-            if best_match:
-                pname = best_match.get("name", "")
-                summary = best_match.get("summary", "")
-                plat = best_match.get("lat")
-                plng = best_match.get("lng")
-                print(f"[highlight] transcript matched '{pname}' (score={best_score}) in: {recent_text[-80:]!r}")
-                asyncio.create_task(
-                    _send_highlight(pname, summary, place_lat=plat, place_lng=plng)
-                )
-                # Trim buffer to just the last chunk so subsequent mentions
-                # of OTHER places in the same turn still get detected
-                agent_text_buffer[:] = agent_text_buffer[-1:]
-            elif len(recent_text) > 40 and last_position:
-                # No cached place matched — try vision-based identification.
-                # The agent might be talking about something not in Places API
-                # (statues, plazas, architectural features, etc.)
-                asyncio.create_task(
-                    _vision_identify_fallback(recent_text)
-                )
+                matched = name_norm in recent_text
+                if not matched:
+                    words = [w for w in name_norm.split() if len(w) > 2]
+                    matched = any(w in recent_text for w in words)
+                if matched:
+                    summary = p.get("summary", "")
+                    plat = p.get("lat")
+                    plng = p.get("lng")
+                    print(f"[highlight] transcript matched '{pname}' in: {recent_text[-80:]!r}")
+                    # Fire and forget — don't block transcript delivery
+                    asyncio.create_task(
+                        _send_highlight(pname, summary, place_lat=plat, place_lng=plng)
+                    )
+                    # Trim buffer to just the last chunk so subsequent mentions
+                    # of OTHER places in the same turn still get detected
+                    agent_text_buffer[:] = agent_text_buffer[-1:]
+                    break
 
     async def on_error(message: str):
         try:
@@ -257,7 +218,7 @@ async def session_endpoint(
                     highlight_lng = p.get("lng", lng)
                     highlight_desc = p.get("summary", "")
                     break
-                words = [w for w in name_lower.split() if len(w) > 4]
+                words = [w for w in name_lower.split() if len(w) > 2]
                 if words and any(w in pn for w in words):
                     highlight_lat = p.get("lat", lat)
                     highlight_lng = p.get("lng", lng)
@@ -311,59 +272,6 @@ async def session_endpoint(
     cached_places: list[dict[str, Any]] = []
     # Dedup: don't re-highlight the same place within 6 seconds
     recent_highlights: dict[str, float] = {}
-    # Throttle heading context updates (don't spam Gemini)
-    last_heading_context_time: float = 0.0
-    # Throttle vision identify fallback (expensive — at most once per 10s)
-    last_vision_identify_time: float = 0.0
-
-    async def _vision_identify_fallback(transcript_text: str) -> None:
-        """Use Gemini Flash vision to identify what the agent is talking about
-        when it doesn't match any cached Places API result."""
-        nonlocal last_vision_identify_time
-        now = time.time()
-        if now - last_vision_identify_time < 10:
-            return
-        last_vision_identify_time = now
-
-        if not last_position:
-            return
-
-        print(f"[vision_identify] fallback for: {transcript_text[-80:]!r}")
-        result = await vision_identify_from_transcript(
-            transcript_text,
-            last_position[0], last_position[1],
-            last_pov["heading"], last_pov["pitch"],
-        )
-        if result:
-            name, target_heading, target_pitch = result
-            msg: dict[str, Any] = {
-                "type": "highlight",
-                "name": name,
-                "description": "",
-                "target_heading": target_heading,
-                "target_pitch": target_pitch,
-            }
-            print(f"[vision_identify] sending highlight '{name}'")
-            try:
-                await websocket.send_text(json.dumps(msg))
-            except Exception as e:
-                print(f"[vision_identify] send error: {e}")
-
-    async def _update_heading_context(heading: float) -> None:
-        """Re-inject direction tags when the user pans significantly."""
-        nonlocal last_heading_context_time
-        now = time.time()
-        # Throttle: at most once every 5 seconds
-        if now - last_heading_context_time < 5:
-            return
-        last_heading_context_time = now
-        if not last_position or not cached_places:
-            return
-        context = build_heading_update(
-            cached_places, last_position[0], last_position[1], heading,
-        )
-        print(f"[heading] re-injecting direction context (heading={heading:.0f}°)")
-        await gemini.send_context(context)
 
     async def _send_highlight(
         place_name: str,
@@ -509,21 +417,9 @@ async def session_endpoint(
 
                 case "pov":
                     # Street View POV update (heading/pitch/zoom)
-                    new_heading = float(msg.get("heading", 0))
-                    old_heading = last_pov["heading"]
-                    last_pov["heading"] = new_heading
+                    last_pov["heading"] = float(msg.get("heading", 0))
                     last_pov["pitch"] = float(msg.get("pitch", 0))
                     last_pov["zoom"] = float(msg.get("zoom", 1))
-
-                    # If user panned significantly (>60°), re-inject direction
-                    # context so the agent knows what's now [ahead].
-                    delta_h = abs(new_heading - old_heading)
-                    if delta_h > 180:
-                        delta_h = 360 - delta_h
-                    if delta_h > 60 and cached_places and last_position:
-                        asyncio.create_task(
-                            _update_heading_context(new_heading)
-                        )
 
                 case _:
                     print(f"[ws] Unknown message type: {msg.get('type')}")
