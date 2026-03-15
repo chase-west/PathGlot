@@ -113,6 +113,12 @@ async def session_endpoint(
     # so the destination marker doesn't get immediately replaced
     navigate_cooldown_until: float = 0.0
 
+    def _normalize(text: str) -> str:
+        """Lowercase + strip common accents for fuzzy matching."""
+        import unicodedata
+        nfkd = unicodedata.normalize("NFKD", text.lower())
+        return "".join(c for c in nfkd if not unicodedata.combining(c))
+
     async def on_transcript(role: str, text: str):
         try:
             await websocket.send_text(
@@ -121,25 +127,25 @@ async def session_endpoint(
         except Exception:
             pass
 
-        # Detect place mentions in agent speech → trigger vision highlight
+        # Detect place mentions in agent speech → trigger highlight
         # Skip during post-navigation cooldown so we don't replace the destination marker
         if role == "agent" and cached_places and time.time() > navigate_cooldown_until:
             agent_text_buffer.append(text)
             # Keep buffer to last ~500 chars to catch names split across chunks
             while sum(len(t) for t in agent_text_buffer) > 500:
                 agent_text_buffer.pop(0)
-            recent_text = "".join(agent_text_buffer).lower()
+            recent_text = _normalize("".join(agent_text_buffer))
 
             for p in cached_places:
                 pname = p.get("name", "")
                 if not pname or len(pname) < 3:
                     continue
-                # Try full name and individual words (>4 chars) for partial matches
+                # Try full name and individual words (>2 chars) for partial matches
                 # e.g. "Museo del Prado" → also match if agent just says "Prado"
-                name_lower = pname.lower()
-                matched = name_lower in recent_text
+                name_norm = _normalize(pname)
+                matched = name_norm in recent_text
                 if not matched:
-                    words = [w for w in name_lower.split() if len(w) > 4]
+                    words = [w for w in name_norm.split() if len(w) > 2]
                     matched = any(w in recent_text for w in words)
                 if matched:
                     summary = p.get("summary", "")
@@ -150,8 +156,9 @@ async def session_endpoint(
                     asyncio.create_task(
                         _send_highlight(pname, summary, place_lat=plat, place_lng=plng)
                     )
-                    # Clear buffer to avoid re-triggering on same text
-                    agent_text_buffer.clear()
+                    # Trim buffer to just the last chunk so subsequent mentions
+                    # of OTHER places in the same turn still get detected
+                    agent_text_buffer[:] = agent_text_buffer[-1:]
                     break
 
     async def on_error(message: str):
@@ -211,7 +218,7 @@ async def session_endpoint(
                     highlight_lng = p.get("lng", lng)
                     highlight_desc = p.get("summary", "")
                     break
-                words = [w for w in name_lower.split() if len(w) > 4]
+                words = [w for w in name_lower.split() if len(w) > 2]
                 if words and any(w in pn for w in words):
                     highlight_lat = p.get("lat", lat)
                     highlight_lng = p.get("lng", lng)
@@ -234,14 +241,20 @@ async def session_endpoint(
             last_pov["heading"] = nav_heading
             last_pov["pitch"] = 5.0
 
-            # Wait for the frontend panorama to load and camera to pan
-            await asyncio.sleep(2.5)
-
-            # Send highlight with vision-based placement
+            # Send highlight immediately with bearing (no vision delay)
             await _send_highlight(
                 place_name, highlight_desc,
                 place_lat=highlight_lat, place_lng=highlight_lng,
                 force=True,
+                use_vision=False,
+            )
+
+            # Wait for panorama to load, then refine with vision
+            await asyncio.sleep(2.0)
+            asyncio.create_task(
+                _refine_highlight_with_vision(
+                    place_name, highlight_desc, highlight_lat, highlight_lng
+                )
             )
 
             # Inject arrival context into Gemini
@@ -257,7 +270,7 @@ async def session_endpoint(
     last_pov: dict[str, float] = {"heading": 0.0, "pitch": 0.0, "zoom": 1.0}
     # Cache nearby places for transcript-based place detection
     cached_places: list[dict[str, Any]] = []
-    # Dedup: don't re-highlight the same place within 15 seconds
+    # Dedup: don't re-highlight the same place within 6 seconds
     recent_highlights: dict[str, float] = {}
 
     async def _send_highlight(
@@ -268,10 +281,11 @@ async def session_endpoint(
         force: bool = False,
         use_vision: bool = True,
     ) -> None:
-        """Send a highlight. force=True skips dedup. use_vision=True tries Gemini Flash."""
+        """Send a highlight immediately with bearing math, then refine with vision.
+        force=True skips dedup. use_vision=True tries Gemini Flash refinement."""
         now = time.time()
         if not force:
-            if place_name.lower() in recent_highlights and now - recent_highlights[place_name.lower()] < 15:
+            if place_name.lower() in recent_highlights and now - recent_highlights[place_name.lower()] < 6:
                 return
         recent_highlights[place_name.lower()] = now
 
@@ -284,8 +298,28 @@ async def session_endpoint(
             msg["lat"] = place_lat
             msg["lng"] = place_lng
 
-        # Use vision to get precise heading/pitch for the label
+        # Send immediately with bearing-based positioning (no delay)
+        print(f"[highlight] sending '{place_name}' (bearing) force={force}")
+        try:
+            await websocket.send_text(json.dumps(msg))
+        except Exception as e:
+            print(f"[ws] ERROR sending highlight: {e}")
+            return
+
+        # Refine with vision in the background — sends an updated highlight
         if use_vision and last_position:
+            asyncio.create_task(
+                _refine_highlight_with_vision(place_name, description, place_lat, place_lng)
+            )
+
+    async def _refine_highlight_with_vision(
+        place_name: str,
+        description: str,
+        place_lat: float | None,
+        place_lng: float | None,
+    ) -> None:
+        """Background task: call Gemini Flash vision and send a refined highlight."""
+        try:
             result = await vision_locate_place(
                 place_name,
                 last_position[0], last_position[1],
@@ -293,14 +327,20 @@ async def session_endpoint(
             )
             if result:
                 target_heading, target_pitch = result
-                msg["target_heading"] = target_heading
-                msg["target_pitch"] = target_pitch
-
-        print(f"[highlight] sending '{place_name}' heading={msg.get('target_heading')} pitch={msg.get('target_pitch')} force={force}")
-        try:
-            await websocket.send_text(json.dumps(msg))
+                msg: dict[str, Any] = {
+                    "type": "highlight",
+                    "name": place_name,
+                    "description": description,
+                    "target_heading": target_heading,
+                    "target_pitch": target_pitch,
+                }
+                if place_lat is not None and place_lng is not None:
+                    msg["lat"] = place_lat
+                    msg["lng"] = place_lng
+                print(f"[highlight] vision refined '{place_name}' heading={target_heading:.1f} pitch={target_pitch:.1f}")
+                await websocket.send_text(json.dumps(msg))
         except Exception as e:
-            print(f"[ws] ERROR sending highlight: {e}")
+            print(f"[highlight] vision refinement error: {e}")
 
     async def resolve_place(query: str) -> dict | None:
         """Called by Gemini tool call — resolve a place by name via Text Search."""

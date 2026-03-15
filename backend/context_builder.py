@@ -88,11 +88,11 @@ def build_location_update(
         f"Direction tags like [ahead] or [to your left] show where each place is relative to where the user is currently looking.\n\n"
         f"Start speaking NOW in {_language_name(language_code)} about this area — don't wait for the user. "
         f"Pick 1-2 of the most interesting places and bring them to life. "
-        f"Say each place's full name clearly. React naturally like a real guide. "
+        f"Say each place's FULL OFFICIAL NAME clearly (exactly as listed above) — this triggers a label on the user's screen. "
         f"Ask the user a question to keep the conversation going. "
         f"Only speak about places on this list. "
         f"If the user wants to visit somewhere, use navigate_to_place. "
-        f"If the user asks about something they can see, confirm it and say the full name — do NOT navigate."
+        f"If the user asks about something they can see ('what is that?'), check places tagged [ahead] and say the FULL NAME — do NOT navigate."
     )
 
 
@@ -126,10 +126,10 @@ def build_arrival_context(
         f"Direction tags like [ahead] or [to your left] show where each place is relative to where the user is currently looking.\n\n"
         f"DO NOT list all these places unprompted. You already described {destination_name} when navigating. "
         f"Keep this list as PASSIVE KNOWLEDGE for answering user questions:\n"
-        f"- IDENTIFYING ('is that a Kiko?'): match by name + direction tag, confirm, say FULL NAME to trigger highlight. Do NOT navigate.\n"
+        f"- IDENTIFYING ('is that a Kiko?', 'what is that?', 'what's that café?'): match by name, type, or direction tag ([ahead] = what user is looking at). Confirm and say FULL NAME to trigger highlight. Do NOT navigate.\n"
         f"- SEARCHING ('any bars nearby?', 'is there a Starbucks?'): match by name or type, say FULL NAME + direction, ask if they want to go there or just mark it.\n"
         f"- NAVIGATING ('take me to...'): only then use navigate_to_place.\n"
-        f"Always say the FULL NAME of any place so the highlight system can mark it on screen."
+        f"CRITICAL: Always say the FULL OFFICIAL NAME of any place — this is the ONLY way a label appears on the user's screen. Never shorten or paraphrase place names."
     )
 
 

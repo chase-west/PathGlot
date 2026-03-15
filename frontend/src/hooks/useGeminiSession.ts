@@ -162,7 +162,7 @@ export function useGeminiSession({
           target_heading: msg.target_heading,
           target_pitch: msg.target_pitch,
         });
-        highlightTimerRef.current = setTimeout(() => setActiveHighlight(null), 8000);
+        highlightTimerRef.current = setTimeout(() => setActiveHighlight(null), 12000);
         break;
 
       case "status":
