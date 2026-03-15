@@ -438,6 +438,7 @@ async def session_endpoint(
         on_error=on_error,
         on_navigate=on_navigate,
         resolve_place=resolve_place,
+        guide_name=guide,
     )
 
     try:

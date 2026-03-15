@@ -1,37 +1,67 @@
 """Per-language system prompt templates and configuration."""
 
+# Gemini Live voices: Aoede, Kore (female) | Charon, Fenrir, Puck (male)
 LANGUAGE_CONFIG = {
     "es": {
         "name": "Spanish",
         "locale": "es-ES",
-        "voice": "Aoede",  # Gemini Live voice name
+        "female_voice": "Aoede",
+        "male_voice": "Puck",
     },
     "fr": {
         "name": "French",
         "locale": "fr-FR",
-        "voice": "Charon",
+        "female_voice": "Aoede",
+        "male_voice": "Charon",
     },
     "de": {
         "name": "German",
         "locale": "de-DE",
-        "voice": "Fenrir",
+        "female_voice": "Kore",
+        "male_voice": "Fenrir",
     },
     "ja": {
         "name": "Japanese",
         "locale": "ja-JP",
-        "voice": "Kore",
+        "female_voice": "Kore",
+        "male_voice": "Charon",
     },
     "it": {
         "name": "Italian",
         "locale": "it-IT",
-        "voice": "Puck",
+        "female_voice": "Aoede",
+        "male_voice": "Puck",
     },
     "pt": {
         "name": "Portuguese",
         "locale": "pt-BR",
-        "voice": "Aoede",
+        "female_voice": "Aoede",
+        "male_voice": "Fenrir",
     },
 }
+
+# Guide name → gender ("female" | "male")
+GUIDE_GENDERS: dict[str, str] = {
+    # Spanish
+    "Carlos": "male", "Sofia": "female", "Miguel": "male",
+    # French
+    "Pierre": "male", "Amélie": "female", "Jean-Luc": "male",
+    # German
+    "Hans": "male", "Greta": "female", "Klaus": "male",
+    # Japanese
+    "Yuki": "female", "Hana": "female", "Kenji": "male",
+    # Italian
+    "Marco": "male", "Giulia": "female", "Luca": "male",
+    # Portuguese
+    "João": "male", "Ana": "female", "Ricardo": "male",
+}
+
+
+def get_voice(language_code: str, guide_name: str) -> str:
+    """Return the correct Gemini Live voice name for a guide."""
+    cfg = LANGUAGE_CONFIG.get(language_code, LANGUAGE_CONFIG["es"])
+    gender = GUIDE_GENDERS.get(guide_name, "female")
+    return cfg[f"{gender}_voice"]
 
 SYSTEM_PROMPT_TEMPLATE = """You are {guide_name}, an enthusiastic and chatty local tour guide in {city_name}.
 

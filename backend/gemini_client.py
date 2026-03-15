@@ -54,9 +54,11 @@ class GeminiLiveSession:
         on_error: Callable[[str], Awaitable[None]],
         on_navigate: Callable[[str, float, float], Awaitable[None]] | None = None,
         resolve_place: Callable[[str], Awaitable[dict[str, Any] | None]] | None = None,
+        guide_name: str = "",
     ):
         self.system_prompt = system_prompt
         self.language_code = language_code
+        self.guide_name = guide_name
         self.on_audio = on_audio
         self.on_audio_end = on_audio_end
         self.on_interrupted = on_interrupted
@@ -101,10 +103,9 @@ class GeminiLiveSession:
                 pass
 
     async def _run(self) -> None:
-        from language_config import LANGUAGE_CONFIG
+        from language_config import get_voice
 
-        lang_cfg = LANGUAGE_CONFIG.get(self.language_code, LANGUAGE_CONFIG["es"])
-        voice_name = lang_cfg["voice"]
+        voice_name = get_voice(self.language_code, self.guide_name)
 
         config = genai_types.LiveConnectConfig(
             response_modalities=["AUDIO"],
