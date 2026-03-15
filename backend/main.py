@@ -96,12 +96,16 @@ async def session_endpoint(
             print(f"[ws] ERROR sending audio: {e}")
 
     async def on_audio_end():
+        nonlocal highlight_fired_this_turn
+        highlight_fired_this_turn = False
         try:
             await websocket.send_text(json.dumps({"type": "audio_end"}))
         except Exception:
             pass
 
     async def on_interrupted():
+        nonlocal highlight_fired_this_turn
+        highlight_fired_this_turn = False
         try:
             await websocket.send_text(json.dumps({"type": "interrupted"}))
         except Exception:
@@ -112,6 +116,8 @@ async def session_endpoint(
     # Cooldown: suppress transcript-based highlights right after navigation
     # so the destination marker doesn't get immediately replaced
     navigate_cooldown_until: float = 0.0
+    # Only fire one highlight per agent turn — reset on audio_end/interrupted
+    highlight_fired_this_turn: bool = False
 
     def _normalize(text: str) -> str:
         """Lowercase + strip common accents for fuzzy matching."""
@@ -129,7 +135,16 @@ async def session_endpoint(
 
         # Detect place mentions in agent speech → trigger highlight
         # Skip during post-navigation cooldown so we don't replace the destination marker
-        if role == "agent" and cached_places and time.time() > navigate_cooldown_until:
+        # Only one highlight per agent turn to avoid label-jumping when agent casually
+        # lists multiple nearby places.
+        nonlocal highlight_fired_this_turn
+        # Each new user speech resets highlight dedup so the agent can re-highlight
+        # the same place when the user asks follow-up questions about it.
+        if role == "user":
+            recent_highlights.clear()
+            agent_text_buffer.clear()
+
+        if role == "agent" and cached_places and time.time() > navigate_cooldown_until and not highlight_fired_this_turn:
             agent_text_buffer.append(text)
             # Keep buffer to last ~500 chars to catch names split across chunks
             while sum(len(t) for t in agent_text_buffer) > 500:
@@ -140,25 +155,29 @@ async def session_endpoint(
                 pname = p.get("name", "")
                 if not pname or len(pname) < 3:
                     continue
-                # Try full name and individual words (>2 chars) for partial matches
-                # e.g. "Museo del Prado" → also match if agent just says "Prado"
+                # Full name match first. Partial match requires MAJORITY of
+                # significant words (>2 chars) so that a generic word like "café"
+                # in a different place name doesn't trigger a false highlight.
+                # e.g. agent says "Gran Café Pasteleria" → "Café Latroupe" won't
+                # match on "café" alone (1/2 words = 50%, need >50%).
+                # But agent saying "Café Latroupe" → both words match → correct.
                 name_norm = _normalize(pname)
                 matched = name_norm in recent_text
                 if not matched:
                     words = [w for w in name_norm.split() if len(w) > 2]
-                    matched = any(w in recent_text for w in words)
+                    if words:
+                        match_count = sum(1 for w in words if w in recent_text)
+                        matched = match_count > len(words) / 2
                 if matched:
                     summary = p.get("summary", "")
                     plat = p.get("lat")
                     plng = p.get("lng")
                     print(f"[highlight] transcript matched '{pname}' in: {recent_text[-80:]!r}")
+                    highlight_fired_this_turn = True
                     # Fire and forget — don't block transcript delivery
                     asyncio.create_task(
                         _send_highlight(pname, summary, place_lat=plat, place_lng=plng)
                     )
-                    # Trim buffer to just the last chunk so subsequent mentions
-                    # of OTHER places in the same turn still get detected
-                    agent_text_buffer[:] = agent_text_buffer[-1:]
                     break
 
     async def on_error(message: str):
