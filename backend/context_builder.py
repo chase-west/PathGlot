@@ -133,6 +133,29 @@ def build_arrival_context(
     )
 
 
+def build_heading_update(
+    places: list[dict[str, Any]],
+    user_lat: float,
+    user_lng: float,
+    user_heading: float,
+) -> str:
+    """
+    Lightweight context injection — only updates direction tags.
+    Sent when the user pans the camera significantly so the agent
+    knows what is now [ahead] vs [behind].
+    """
+    places_text = _format_places(
+        places, user_lat=user_lat, user_lng=user_lng, user_heading=user_heading,
+    )
+    return (
+        f"[DIRECTION UPDATE — the user has turned and is now looking in a different direction. "
+        f"Updated direction tags below REPLACE all previous direction tags.]\n"
+        f"What the user can now see:\n{places_text}\n\n"
+        f"Places tagged [ahead] are what the user is currently looking at. "
+        f"If the user asks 'what is that?' or 'what am I looking at?', the answer is one of the [ahead] places."
+    )
+
+
 def _language_name(code: str) -> str:
     names = {
         "es": "Spanish",

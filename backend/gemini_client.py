@@ -67,7 +67,9 @@ class GeminiLiveSession:
 
         # v1alpha required for enable_affective_dialog and proactivity
         self._client = genai.Client(
-            api_key=GEMINI_API_KEY,
+            vertexai=True,
+            project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
+            location=os.environ.get("CLOUD_RUN_REGION", "us-central1"),
             http_options={"api_version": "v1alpha"},
         )
         self._audio_queue: asyncio.Queue[str | None] = asyncio.Queue()
