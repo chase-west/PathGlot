@@ -38,6 +38,10 @@ export default function App() {
     setTimeout(() => streetViewRef.current?.lookAt(lat, lng), 2000);
   }, []);
 
+  const handleScreenshotRequest = useCallback(() => {
+    return streetViewRef.current?.captureScreenshot() ?? null;
+  }, []);
+
   const session = useGeminiSession(
     config
       ? {
@@ -45,15 +49,16 @@ export default function App() {
           city: city!,
           guideName: config.guideName,
           onNavigate: handleNavigate,
+          onScreenshotRequest: handleScreenshotRequest,
         }
-      : { languageCode: "es", city: getCity("es", "madrid")!, guideName: "Carlos" }
+      : { languageCode: "es", city: getCity("es", "madrid")!, guideName: "Sofia" }
   );
 
   const lastSentPositionRef = useRef<{ lat: number; lng: number } | null>(null);
 
   const handlePovChange = useCallback(
     (pov: StreetViewPov) => {
-      session.sendPovUpdate(pov.heading, pov.pitch, pov.zoom);
+      session.sendPovUpdate(pov.heading, pov.pitch, pov.zoom, pov.pano);
     },
     [session]
   );
@@ -66,7 +71,7 @@ export default function App() {
         !last ||
         haversineDistance(last.lat, last.lng, pos.lat, pos.lng) > 5
       ) {
-        session.sendPositionUpdate(pos.lat, pos.lng);
+        session.sendPositionUpdate(pos.lat, pos.lng, pos.pano);
         lastSentPositionRef.current = { lat: pos.lat, lng: pos.lng };
       }
     },
@@ -97,6 +102,12 @@ export default function App() {
       autoConnectConfigRef.current = configKey;
       session.connect().then(() => {
         session.startMic();
+        // Send initial position + POV so backend has context even before user moves
+        const info = streetViewRef.current?.getInfo();
+        if (info) {
+          session.sendPositionUpdate(info.lat, info.lng, info.pano);
+          session.sendPovUpdate(info.heading, info.pitch, info.zoom, info.pano);
+        }
       });
     }
   }, [config, session.status]);

@@ -2,11 +2,28 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Loader } from "@googlemaps/js-api-loader";
 import type { City } from "../lib/cities";
 
+// Force WebGL canvases to preserve their drawing buffer so toDataURL()
+// returns actual content instead of black. Must run before Google Maps
+// creates any WebGL contexts.
+{
+  const orig = HTMLCanvasElement.prototype.getContext as Function;
+  (HTMLCanvasElement.prototype as any).getContext = function (
+    contextId: string,
+    options?: any,
+  ) {
+    if (contextId === "webgl" || contextId === "webgl2") {
+      options = { ...options, preserveDrawingBuffer: true };
+    }
+    return orig.call(this, contextId, options);
+  };
+}
+
 export interface StreetViewPosition {
   lat: number;
   lng: number;
   heading: number;
   pitch: number;
+  pano: string;
   pov: google.maps.StreetViewPov;
 }
 
@@ -14,6 +31,7 @@ export interface StreetViewPov {
   heading: number;
   pitch: number;
   zoom: number;
+  pano: string;
 }
 
 interface UseStreetViewOptions {
@@ -132,6 +150,7 @@ export function useStreetView({ city, onPositionChange, onPovChange }: UseStreet
               lng: pos.lng(),
               heading: pov.heading,
               pitch: pov.pitch,
+              pano: panorama.getPano(),
               pov,
             });
           }
@@ -145,7 +164,7 @@ export function useStreetView({ city, onPositionChange, onPovChange }: UseStreet
           const pov = panorama.getPov();
           const zoom = panorama.getZoom() ?? 1;
           if (onPovChangeRef.current) {
-            onPovChangeRef.current({ heading: pov.heading, pitch: pov.pitch, zoom });
+            onPovChangeRef.current({ heading: pov.heading, pitch: pov.pitch, zoom, pano: panorama.getPano() });
           }
         });
       })

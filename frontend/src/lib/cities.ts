@@ -37,7 +37,7 @@ export const LANGUAGES: Language[] = [
     name: "Spanish",
     nativeName: "Español",
     flag: "🇪🇸",
-    guideNames: ["Carlos", "Sofia", "Miguel"],
+    guideNames: ["Sofia"],
     cities: [
       {
         id: "madrid",
@@ -76,7 +76,7 @@ export const LANGUAGES: Language[] = [
     name: "French",
     nativeName: "Français",
     flag: "🇫🇷",
-    guideNames: ["Pierre", "Amélie", "Jean-Luc"],
+    guideNames: ["Amélie"],
     cities: [
       {
         id: "paris",
@@ -115,7 +115,7 @@ export const LANGUAGES: Language[] = [
     name: "German",
     nativeName: "Deutsch",
     flag: "🇩🇪",
-    guideNames: ["Hans", "Greta", "Klaus"],
+    guideNames: ["Greta"],
     cities: [
       {
         id: "berlin",
@@ -144,7 +144,7 @@ export const LANGUAGES: Language[] = [
     name: "Japanese",
     nativeName: "日本語",
     flag: "🇯🇵",
-    guideNames: ["Yuki", "Hana", "Kenji"],
+    guideNames: ["Yuki", "Hana"],
     cities: [
       {
         id: "tokyo-shibuya",
@@ -173,7 +173,7 @@ export const LANGUAGES: Language[] = [
     name: "Italian",
     nativeName: "Italiano",
     flag: "🇮🇹",
-    guideNames: ["Marco", "Giulia", "Luca"],
+    guideNames: ["Giulia"],
     cities: [
       {
         id: "rome",
@@ -202,7 +202,7 @@ export const LANGUAGES: Language[] = [
     name: "Portuguese",
     nativeName: "Português",
     flag: "🇵🇹",
-    guideNames: ["João", "Ana", "Ricardo"],
+    guideNames: ["Ana"],
     cities: [
       {
         id: "lisbon",

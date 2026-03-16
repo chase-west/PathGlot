@@ -35,6 +35,7 @@ interface UseGeminiSessionOptions {
   city: City;
   guideName: string;
   onNavigate?: (placeName: string, lat: number, lng: number) => void;
+  onScreenshotRequest?: () => string | null;
 }
 
 export function useGeminiSession({
@@ -42,6 +43,7 @@ export function useGeminiSession({
   city,
   guideName,
   onNavigate,
+  onScreenshotRequest,
 }: UseGeminiSessionOptions) {
   const [status, setStatus] = useState<SessionStatus>("idle");
   const [isMicActive, setIsMicActive] = useState(false);
@@ -71,6 +73,11 @@ export function useGeminiSession({
   useEffect(() => {
     onNavigateRef.current = onNavigate;
   }, [onNavigate]);
+
+  const onScreenshotRequestRef = useRef(onScreenshotRequest);
+  useEffect(() => {
+    onScreenshotRequestRef.current = onScreenshotRequest;
+  }, [onScreenshotRequest]);
 
   // Connect to backend WebSocket and start Gemini session
   const connect = useCallback(async () => {
@@ -178,6 +185,15 @@ export function useGeminiSession({
           target_pitch: msg.target_pitch,
         });
         highlightTimerRef.current = setTimeout(() => setActiveHighlight(null), 12000);
+        break;
+
+      case "screenshot_request":
+        // Backend needs a screenshot for vision identification
+        {
+          const data = onScreenshotRequestRef.current?.() ?? null;
+          console.log("[session] screenshot captured:", data ? `${data.length} chars` : "null (fallback to static)");
+          wsRef.current?.send(JSON.stringify({ type: "screenshot", data }));
+        }
         break;
 
       case "status":
@@ -313,10 +329,10 @@ export function useGeminiSession({
 
   // Send position update to backend
   const sendPositionUpdate = useCallback(
-    (lat: number, lng: number) => {
+    (lat: number, lng: number, pano?: string) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(
-          JSON.stringify({ type: "position", lat, lng })
+          JSON.stringify({ type: "position", lat, lng, pano })
         );
       }
     },
@@ -325,10 +341,10 @@ export function useGeminiSession({
 
   // Send POV update to backend (for vision-based label placement)
   const sendPovUpdate = useCallback(
-    (heading: number, pitch: number, zoom: number) => {
+    (heading: number, pitch: number, zoom: number, pano?: string) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(
-          JSON.stringify({ type: "pov", heading, pitch, zoom })
+          JSON.stringify({ type: "pov", heading, pitch, zoom, pano })
         );
       }
     },
@@ -415,6 +431,10 @@ interface HighlightMessage {
   target_pitch?: number;   // vision-refined vertical angle (absolute degrees)
 }
 
+interface ScreenshotRequestMessage {
+  type: "screenshot_request";
+}
+
 type BackendMessage =
   | AudioMessage
   | AudioEndMessage
@@ -423,4 +443,5 @@ type BackendMessage =
   | ErrorMessage
   | StatusMessage
   | NavigateMessage
-  | HighlightMessage;
+  | HighlightMessage
+  | ScreenshotRequestMessage;

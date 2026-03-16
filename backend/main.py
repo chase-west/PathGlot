@@ -25,7 +25,7 @@ from gemini_client import GeminiLiveSession
 from places_client import nearby_search, text_search, haversine_distance
 from context_builder import build_location_update, build_arrival_context, build_heading_update
 from language_config import build_system_prompt
-from vision_locate import vision_locate_place, vision_identify_view
+from vision_locate import vision_locate_place, vision_identify_view, vision_identify_from_screenshot
 
 MOVEMENT_THRESHOLD_METERS = 30  # minimum move to trigger Places API call (~100ft)
 
@@ -72,7 +72,7 @@ async def session_endpoint(
     websocket: WebSocket,
     lang: str = Query("es"),
     city: str = Query("madrid"),
-    guide: str = Query("Carlos"),
+    guide: str = Query("Sofia"),
 ):
     await websocket.accept()
 
@@ -278,7 +278,7 @@ async def session_endpoint(
             print(f"[post_navigate] ERROR: {e}")
 
     last_position: tuple[float, float] | None = None
-    last_pov: dict[str, float] = {"heading": 0.0, "pitch": 0.0, "zoom": 1.0}
+    last_pov: dict[str, Any] = {"heading": 0.0, "pitch": 0.0, "zoom": 1.0, "pano": ""}
     # Cache nearby places for transcript-based place detection
     cached_places: list[dict[str, Any]] = []
     # Dedup: don't re-highlight the same place within 6 seconds
@@ -286,6 +286,9 @@ async def session_endpoint(
     # Heading context re-injection: track last heading sent to Gemini
     last_injected_heading: float = 0.0
     last_heading_inject_time: float = 0.0
+    # Screenshot coordination: frontend captures actual canvas on-demand
+    screenshot_event = asyncio.Event()
+    screenshot_data_holder: list[bytes | None] = [None]
     async def _send_highlight(
         place_name: str,
         description: str,
@@ -338,6 +341,8 @@ async def session_endpoint(
                 place_name,
                 last_position[0], last_position[1],
                 last_pov["heading"], last_pov["pitch"],
+                pano=last_pov.get("pano", ""),
+                zoom=float(last_pov.get("zoom", 1)),
             )
             if result:
                 target_heading, target_pitch = result
@@ -357,13 +362,39 @@ async def session_endpoint(
             print(f"[highlight] vision refinement error: {e}")
 
     async def identify_view() -> tuple[str, str] | None:
-        """Called by Gemini tool call — capture current view and identify what's visible."""
-        if not last_position:
+        """Called by Gemini tool call — request screenshot from frontend, identify with Flash."""
+        # Request a screenshot from the frontend (actual canvas capture)
+        screenshot_event.clear()
+        screenshot_data_holder[0] = None
+        try:
+            await websocket.send_text(json.dumps({"type": "screenshot_request"}))
+        except Exception:
             return None
-        result = await vision_identify_view(
-            last_position[0], last_position[1],
-            last_pov["heading"], last_pov["pitch"],
-        )
+
+        # Wait for frontend to send back the screenshot
+        try:
+            await asyncio.wait_for(screenshot_event.wait(), timeout=5.0)
+        except asyncio.TimeoutError:
+            print("[identify_view] screenshot request timed out")
+            return None
+
+        screenshot_bytes = screenshot_data_holder[0]
+        if screenshot_bytes:
+            # Use actual screenshot — exactly what the user sees
+            print(f"[identify_view] got screenshot ({len(screenshot_bytes)} bytes), sending to Flash")
+            result = await vision_identify_from_screenshot(screenshot_bytes, nearby_places=cached_places, city_name=city_name)
+        elif last_position:
+            # Fallback to static API if canvas capture failed (tainted canvas)
+            print("[identify_view] no screenshot, falling back to static API")
+            result = await vision_identify_view(
+                last_position[0], last_position[1],
+                last_pov["heading"], last_pov["pitch"],
+                pano=last_pov.get("pano", ""),
+                zoom=float(last_pov.get("zoom", 1)),
+            )
+        else:
+            return None
+
         if result:
             name, description = result
             # Send a label to the frontend
@@ -429,6 +460,8 @@ async def session_endpoint(
                     # Street View position update
                     lat = float(msg["lat"])
                     lng = float(msg["lng"])
+                    if msg.get("pano"):
+                        last_pov["pano"] = msg["pano"]
 
                     should_update = last_position is None or haversine_distance(
                         last_position[0], last_position[1], lat, lng
@@ -455,11 +488,13 @@ async def session_endpoint(
 
 
                 case "pov":
-                    # Street View POV update (heading/pitch/zoom)
+                    # Street View POV update (heading/pitch/zoom/pano)
                     new_heading = float(msg.get("heading", 0))
                     last_pov["heading"] = new_heading
                     last_pov["pitch"] = float(msg.get("pitch", 0))
                     last_pov["zoom"] = float(msg.get("zoom", 1))
+                    if msg.get("pano"):
+                        last_pov["pano"] = msg["pano"]
 
                     # Re-inject direction tags when user pans >60° so Gemini
                     # knows what's now [ahead] without waiting for a position update.
@@ -482,6 +517,16 @@ async def session_endpoint(
                         )
                         await gemini.send_context(heading_ctx)
                         print(f"[pov] heading update injected (delta={heading_delta:.1f}°)")
+
+                case "screenshot":
+                    # Frontend response to screenshot_request
+                    import base64 as b64
+                    data = msg.get("data")
+                    if data:
+                        screenshot_data_holder[0] = b64.b64decode(data)
+                    else:
+                        screenshot_data_holder[0] = None
+                    screenshot_event.set()
 
                 case _:
                     print(f"[ws] Unknown message type: {msg.get('type')}")

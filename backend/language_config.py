@@ -42,18 +42,13 @@ LANGUAGE_CONFIG = {
 
 # Guide name → gender ("female" | "male")
 GUIDE_GENDERS: dict[str, str] = {
-    # Spanish
-    "Carlos": "male", "Sofia": "female", "Miguel": "male",
-    # French
-    "Pierre": "male", "Amélie": "female", "Jean-Luc": "male",
-    # German
-    "Hans": "male", "Greta": "female", "Klaus": "male",
-    # Japanese
-    "Yuki": "female", "Hana": "female", "Kenji": "male",
-    # Italian
-    "Marco": "male", "Giulia": "female", "Luca": "male",
-    # Portuguese
-    "João": "male", "Ana": "female", "Ricardo": "male",
+    "Sofia": "female",      # Spanish
+    "Amélie": "female",     # French
+    "Greta": "female",      # German
+    "Yuki": "female",       # Japanese
+    "Hana": "female",       # Japanese
+    "Giulia": "female",     # Italian
+    "Ana": "female",        # Portuguese
 }
 
 

@@ -1,10 +1,12 @@
 import { useStreetView, type StreetViewPosition, type StreetViewPov } from "../hooks/useStreetView";
 import type { City } from "../lib/cities";
-import { useImperativeHandle, forwardRef, useRef, useEffect } from "react";
+import { useImperativeHandle, forwardRef, useRef, useEffect, useCallback } from "react";
 
 export interface StreetViewHandle {
   moveTo: (lat: number, lng: number) => void;
   lookAt: (lat: number, lng: number) => void;
+  captureScreenshot: () => string | null;
+  getInfo: () => { lat: number; lng: number; pano: string; heading: number; pitch: number; zoom: number } | null;
 }
 
 export interface HighlightInfo {
@@ -31,7 +33,54 @@ export const StreetView = forwardRef<StreetViewHandle, Props>(function StreetVie
   });
   const labelRef = useRef<HTMLDivElement>(null);
 
-  useImperativeHandle(ref, () => ({ moveTo, lookAt }), [moveTo, lookAt]);
+  // Capture a screenshot of the Street View canvas (what the user actually sees)
+  // Resized to 640x480 for fast vision processing
+  const captureScreenshot = useCallback((): string | null => {
+    const container = containerRef.current;
+    if (!container) return null;
+    // Google Maps renders SV as WebGL canvases — grab the largest one
+    const canvases = container.querySelectorAll("canvas");
+    let mainCanvas: HTMLCanvasElement | null = null;
+    let maxArea = 0;
+    canvases.forEach((c) => {
+      const area = c.width * c.height;
+      if (area > maxArea) { maxArea = area; mainCanvas = c; }
+    });
+    if (!mainCanvas) return null;
+    try {
+      // Resize to 640x480 — smaller image = faster model inference
+      const resized = document.createElement("canvas");
+      resized.width = 640;
+      resized.height = 480;
+      const ctx = resized.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(mainCanvas as HTMLCanvasElement, 0, 0, 640, 480);
+      return resized.toDataURL("image/jpeg", 0.7).split(",")[1] || null;
+    } catch {
+      // Canvas is tainted by cross-origin tiles — can't capture
+      return null;
+    }
+  }, []);
+
+  // Get current panorama info (position, pano ID, POV)
+  const getInfo = useCallback(() => {
+    const pano = panorama.current;
+    if (!pano) return null;
+    const pos = pano.getPosition();
+    if (!pos) return null;
+    const pov = pano.getPov();
+    const zoom = pano.getZoom() ?? 1;
+    return {
+      lat: pos.lat(),
+      lng: pos.lng(),
+      pano: pano.getPano(),
+      heading: pov.heading,
+      pitch: pov.pitch,
+      zoom,
+    };
+  }, [panorama]);
+
+  useImperativeHandle(ref, () => ({ moveTo, lookAt, captureScreenshot, getInfo }), [moveTo, lookAt, captureScreenshot, getInfo]);
 
   // Pan camera toward highlighted place ONCE per unique place name.
   // Skip if it's just a pitch refinement for the same place.
