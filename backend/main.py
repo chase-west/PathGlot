@@ -141,6 +141,8 @@ async def session_endpoint(
         # Each new user speech resets highlight dedup so the agent can re-highlight
         # the same place when the user asks follow-up questions about it.
         if role == "user":
+            nonlocal last_user_speech
+            last_user_speech = text
             recent_highlights.clear()
             agent_text_buffer.clear()
 
@@ -286,6 +288,8 @@ async def session_endpoint(
     # Heading context re-injection: track last heading sent to Gemini
     last_injected_heading: float = 0.0
     last_heading_inject_time: float = 0.0
+    # Track user's recent speech so vision can use it as context
+    last_user_speech: str = ""
     # Screenshot coordination: frontend captures actual canvas on-demand
     screenshot_event = asyncio.Event()
     screenshot_data_holder: list[bytes | None] = [None]

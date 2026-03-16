@@ -187,10 +187,9 @@ async def vision_identify_from_screenshot(
                                 "Read the actual storefront sign/awning — not ads or posters in windows. "
                                 "A shop selling Casa Batlló merch is a shop, NOT Casa Batlló.\n\n"
                                 + nearby_ctx
-                                + "Reply ONLY in this format:\n"
+                                + "Reply ONLY:\n"
                                 "NAME: <1-5 words>\n"
-                                "DESC: <1 sentence>\n\n"
-                                "Reply UNKNOWN only if image is blank/empty."
+                                "DESC: <1 sentence>"
                             )
                         ),
                     ],
