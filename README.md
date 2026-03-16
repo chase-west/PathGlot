@@ -101,8 +101,8 @@ Enable these in your GCP project:
 ### Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/pathglot
-cd pathglot
+git clone https://github.com/chase-west/PathGlot
+cd PathGlot
 cp .env.example .env
 ```
 

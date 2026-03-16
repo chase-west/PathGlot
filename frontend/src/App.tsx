@@ -66,7 +66,7 @@ export default function App() {
   const handlePositionChange = useCallback(
     (pos: StreetViewPosition) => {
       const last = lastSentPositionRef.current;
-      // Frontend throttle: only send if moved >5m (backend does the 50m threshold)
+      // Frontend throttle: only send if moved >5m (backend does the 30m threshold)
       if (
         !last ||
         haversineDistance(last.lat, last.lng, pos.lat, pos.lng) > 5

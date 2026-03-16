@@ -340,7 +340,7 @@ async def vision_locate_place(
     # fx=0 is left edge (heading - FOV/2), fx=1 is right edge (heading + FOV/2)
     # fy=0 is top edge (pitch + vFov/2), fy=1 is bottom edge (pitch - vFov/2)
     h_fov = capture_fov
-    v_fov = capture_fov / CAPTURE_ASPECT  # ~67.5° for 4:3 at default zoom
+    v_fov = capture_fov / CAPTURE_ASPECT  # ~50.6° for 16:9 at default zoom
 
     target_heading = (heading + (fx - 0.5) * h_fov) % 360
     target_pitch = pitch + (0.5 - fy) * v_fov
