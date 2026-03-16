@@ -4,7 +4,7 @@
 
 PathGlot drops you into Google Street View while a Gemini Live voice agent acts as your personal tour guide — narrating landmarks, answering questions, and navigating the city, all in the language you're learning. Move through the streets and your guide dynamically references the real places around you in real time.
 
-> Built for the **[Gemini Live Agent Challenge](https://googleai.devpost.com)** · Category: **Live Agents**
+> Built for the **[Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/)** · Category: **Live Agents**
 > `#GeminiLiveAgentChallenge`
 
 ---
