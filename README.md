@@ -135,9 +135,9 @@ This script:
 1. Creates an Artifact Registry repository
 2. Builds and pushes Docker images for backend + frontend
 3. Deploys both services to Cloud Run (us-central1)
-4. Configures secrets via Secret Manager
+4. Passes API keys directly as environment variables
 
-Alternatively, use Cloud Build for CI/CD:
+Alternatively, use Cloud Build for CI/CD (reads API keys from Secret Manager):
 
 ```bash
 gcloud builds submit --config=backend/deploy/cloudbuild.yaml \
