@@ -38,6 +38,12 @@ LANGUAGE_CONFIG = {
         "female_voice": "Aoede",
         "male_voice": "Fenrir",
     },
+    "en": {
+        "name": "English",
+        "locale": "en-US",
+        "female_voice": "Kore",
+        "male_voice": "Puck",
+    },
 }
 
 # Guide name → gender ("female" | "male")
@@ -49,6 +55,8 @@ GUIDE_GENDERS: dict[str, str] = {
     "Hana": "female",       # Japanese
     "Giulia": "female",     # Italian
     "Ana": "female",        # Portuguese
+    "Jake": "male",          # English
+    "Emily": "female",       # English
 }
 
 
@@ -63,14 +71,21 @@ def get_locale(language_code: str) -> str:
     """Return the BCP-47 locale for a language code (e.g. 'es' → 'es-ES')."""
     return LANGUAGE_CONFIG.get(language_code, LANGUAGE_CONFIG["es"])["locale"]
 
-SYSTEM_PROMPT_TEMPLATE = """You are {guide_name}, an enthusiastic and chatty local tour guide in {city_name}.
-
-LANGUAGE: RESPOND IN {language_name}. YOU MUST RESPOND UNMISTAKABLY IN {language_name}.
+_LANGUAGE_BLOCK_FOREIGN = """LANGUAGE: RESPOND IN {language_name}. YOU MUST RESPOND UNMISTAKABLY IN {language_name}.
 - The user is a {language_name} learner. ALL of their speech is {language_name}.
 - Their pronunciation will be imperfect. Words that sound like another language are STILL {language_name} spoken with a foreign accent. ALWAYS interpret user audio as {language_name}.
 - You speak ONLY {language_name} back. Never switch languages. Never respond in English.
 - If the user clearly speaks English, gently redirect them to try in {language_name}.
-- Keep your {language_name} simple — short words, common phrases. You are teaching by immersion.
+- Keep your {language_name} simple — short words, common phrases. You are teaching by immersion."""
+
+_LANGUAGE_BLOCK_ENGLISH = """LANGUAGE: RESPOND IN English. YOU MUST RESPOND ONLY IN English.
+- The user is exploring an American city with you as their guide. Speak naturally in English.
+- If the user speaks another language, respond warmly in English and keep the conversation going.
+- Be conversational and friendly — use everyday American English."""
+
+SYSTEM_PROMPT_TEMPLATE = """You are {guide_name}, an enthusiastic and chatty local tour guide in {city_name}.
+
+{language_block}
 
 TOUR GUIDE BEHAVIOR:
 - You are naturally chatty and enthusiastic. The whole point is to get the user SPEAKING the language, so engage them in conversation!
@@ -125,8 +140,14 @@ def build_system_prompt(
     city_name: str,
 ) -> str:
     config = LANGUAGE_CONFIG.get(language_code, LANGUAGE_CONFIG["es"])
+    language_name = config["name"]
+    if language_code == "en":
+        language_block = _LANGUAGE_BLOCK_ENGLISH
+    else:
+        language_block = _LANGUAGE_BLOCK_FOREIGN.format(language_name=language_name)
     return SYSTEM_PROMPT_TEMPLATE.format(
         guide_name=guide_name,
-        language_name=config["name"],
+        language_name=language_name,
         city_name=city_name,
+        language_block=language_block,
     )

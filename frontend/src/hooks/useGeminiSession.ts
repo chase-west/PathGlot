@@ -9,6 +9,7 @@ const SPEECH_LOCALES: Record<string, string> = {
   ja: "ja-JP",
   it: "it-IT",
   pt: "pt-BR",
+  en: "en-US",
 };
 
 
