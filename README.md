@@ -11,8 +11,7 @@ PathGlot drops you into Google Street View while a Gemini Live voice agent acts 
 
 ## Demo
 
-<!-- 🎬 Replace with your demo video link -->
-**[▶ Watch Demo Video](#)**
+**[▶ Watch Demo Video](https://www.youtube.com/watch?v=x8xgqN6Dw-4)**
 
 ---
 
