@@ -15,8 +15,8 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 # Fixed FOV for static image capture — used in the fx,fy → heading,pitch conversion
 CAPTURE_FOV = 90
-CAPTURE_SIZE = "640x480"
-CAPTURE_ASPECT = 640 / 480  # width / height
+CAPTURE_SIZE = "640x360"
+CAPTURE_ASPECT = 640 / 360  # width / height — 16:9 matches typical widescreen viewport
 
 
 async def fetch_streetview_image(

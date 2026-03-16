@@ -401,22 +401,59 @@ async def session_endpoint(
 
         if result:
             name, description = result
-            # Send a label to the frontend
+            # Send a label anchored to the center of the current view
             try:
                 await websocket.send_text(json.dumps({
                     "type": "highlight",
                     "name": name,
                     "description": description,
+                    "target_heading": last_pov["heading"],
+                    "target_pitch": last_pov["pitch"],
                 }))
             except Exception:
                 pass
         return result
 
     async def resolve_place(query: str) -> dict | None:
-        """Called by Gemini tool call — resolve a place by name via Text Search."""
-        # Use the user's current position for location bias (falls back to 0,0)
+        """Called by Gemini tool call — resolve a place by name via Text Search.
+
+        Checks cached nearby places first so that when the agent navigates to a
+        place it was already talking about, we use the exact known coordinates
+        instead of a text search that might resolve to a similarly-named place.
+        """
+        query_norm = _normalize(query)
+
+        best_match: dict | None = None
+        best_score = 0
+        for p in cached_places:
+            pname = p.get("name", "")
+            if not pname:
+                continue
+            pname_norm = _normalize(pname)
+            # Exact containment (either direction) — prefer longer specific matches
+            if pname_norm in query_norm or query_norm in pname_norm:
+                score = len(pname_norm)
+                if score > best_score:
+                    best_score = score
+                    best_match = p
+                continue
+            # Majority word overlap
+            words = [w for w in pname_norm.split() if len(w) > 2]
+            if words:
+                match_count = sum(1 for w in words if w in query_norm)
+                if match_count > len(words) / 2:
+                    score = match_count
+                    if score > best_score:
+                        best_score = score
+                        best_match = p
+
+        if best_match:
+            print(f"[resolve_place] cache hit: '{best_match['name']}' for query={query!r}")
+            return best_match
+
+        # Fall back to Text Search API for places not in the nearby cache
         lat, lng = last_position or (0.0, 0.0)
-        print(f"[resolve_place] query={query!r}  bias=({lat}, {lng})")
+        print(f"[resolve_place] cache miss — text_search query={query!r}  bias=({lat}, {lng})")
         return await text_search(query, lat, lng, language_code=lang)
 
     gemini = GeminiLiveSession(

@@ -253,6 +253,8 @@ class GeminiLiveSession:
                             # but preserve whitespace (chunks arrive with leading spaces)
                             text = re.sub(r'(?:reagált?:?)?\s*\w+_to_\w+\{[^}]*\}', '', text)
                             text = re.sub(r'<ctrl\d+>', '', text)
+                            # Strip direction tags that should never appear in speech
+                            text = re.sub(r'\[(ahead|behind(?: you)?|to your (?:right|left))\]', '', text, flags=re.IGNORECASE)
                             if text and not text.isspace():
                                 print(f"[gemini recv] agent: {text!r}")
                                 await self.on_transcript("agent", text)

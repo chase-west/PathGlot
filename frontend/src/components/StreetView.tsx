@@ -132,9 +132,9 @@ export const StreetView = forwardRef<StreetViewHandle, Props>(function StreetVie
       const { width, height } = container.getBoundingClientRect();
 
       if (!hasVision && (targetLat == null || targetLng == null)) {
-        // No coordinates and no vision — show centered at top of viewport
+        // No coordinates and no vision — center on screen
         label.style.left = `${width / 2}px`;
-        label.style.top = "60px";
+        label.style.top = `${height * 0.5}px`;
         label.style.opacity = "1";
         return;
       }
@@ -179,8 +179,11 @@ export const StreetView = forwardRef<StreetViewHandle, Props>(function StreetVie
       // Only show if in front of camera (within horizontal FOV)
       const inView = Math.abs(deltaH) < hFov / 2;
 
+      const labelHeight = label.offsetHeight || 50;
+      const clampedY = Math.max(labelHeight + 8, Math.min(height - 8, screenY));
+
       label.style.left = `${screenX}px`;
-      label.style.top = `${screenY}px`;
+      label.style.top = `${clampedY}px`;
       label.style.opacity = inView ? "1" : "0";
     };
 
