@@ -10,8 +10,13 @@ import worldAtlas from "world-atlas/countries-110m.json";
 // ── Constants ──
 
 const RADIUS = 1.6;
-const EXTRUDE = 0.055; // how much land is raised above ocean
-const GEO_DETAIL = 28; // icosahedron detail — balance between low-poly look and continent accuracy
+const EXTRUDE = 0.038; // how much land is raised above ocean
+const GEO_DETAIL = 40; // icosahedron detail — balance between low-poly look and continent accuracy
+
+// Rotate the globe group so Europe faces the camera initially.
+// latLngToVec3 maps the front face (max +Z) to lng=90° (India).
+// Europe sits at ~lng=10°, so we rotate 80° around Y to bring it forward.
+const GROUP_ROTATION_Y = (80 * Math.PI) / 180;
 
 // ISO 3166-1 numeric → language code
 const COUNTRY_LANG: Record<string, string> = {
@@ -29,7 +34,7 @@ const LANG_FILL: Record<string, string> = {
   fr: "#3b82f6",
   de: "#eab308",
   ja: "#f43f5e",
-  it: "#14b8a6",
+  it: "#f97316",
   pt: "#a855f7",
 };
 
@@ -39,7 +44,7 @@ const LANG_STROKE: Record<string, string> = {
   fr: "#93c5fd",
   de: "#fde047",
   ja: "#fda4af",
-  it: "#5eead4",
+  it: "#fed7aa",
   pt: "#c4b5fd",
 };
 
@@ -75,6 +80,7 @@ function latLngToVec3(lat: number, lng: number, r: number): THREE.Vector3 {
 function createEarthTextures(w: number, h: number): {
   color: HTMLCanvasElement;
   displacement: HTMLCanvasElement;
+  landMask: HTMLCanvasElement;
 } {
   const countries = topojson.feature(
     worldAtlas as any,
@@ -91,7 +97,7 @@ function createEarthTextures(w: number, h: number): {
   colorCanvas.height = h;
   const cCtx = colorCanvas.getContext("2d")!;
 
-  // Ocean — deep vibrant blue
+  // Ocean — deep blue
   cCtx.fillStyle = "#1d4ed8";
   cCtx.fillRect(0, 0, w, h);
 
@@ -179,7 +185,7 @@ function createEarthTextures(w: number, h: number): {
   tCtx.filter = "blur(3px)";
   tCtx.drawImage(dispCanvas, 0, 0);
 
-  return { color: colorCanvas, displacement: tempCanvas };
+  return { color: colorCanvas, displacement: tempCanvas, landMask: dispCanvas };
 }
 
 // ── Flag texture (canvas drawn) ──
@@ -436,6 +442,7 @@ function GlobeMesh({ selectedLanguageCode, onLanguageClick, zoomTarget }: GlobeM
   const earthRef = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
   const userDragging = useRef(false);
+  const [autoRotateEnabled, setAutoRotateEnabled] = useState(true);
 
   // Disable raycasting on earth mesh so flags can be clicked
   useEffect(() => {
@@ -444,13 +451,82 @@ function GlobeMesh({ selectedLanguageCode, onLanguageClick, zoomTarget }: GlobeM
     }
   }, []);
 
-  const { earthTex, dispTex } = useMemo(() => {
-    const { color, displacement } = createEarthTextures(2048, 1024);
-    const ct = new THREE.CanvasTexture(color);
-    ct.minFilter = THREE.LinearFilter;
-    const dt = new THREE.CanvasTexture(displacement);
-    dt.minFilter = THREE.LinearFilter;
-    return { earthTex: ct, dispTex: dt };
+  const { earthGeo } = useMemo(() => {
+    const { color: colorCanvas, landMask } = createEarthTextures(2048, 1024);
+
+    // Color data
+    const cCtx = colorCanvas.getContext("2d")!;
+    const colorData = cCtx.getImageData(0, 0, colorCanvas.width, colorCanvas.height);
+    const CW = colorCanvas.width, CH = colorCanvas.height;
+
+    // Sharp land mask (unblurred) — white = land, black = ocean
+    const mCtx = landMask.getContext("2d")!;
+    const maskData = mCtx.getImageData(0, 0, landMask.width, landMask.height);
+    const MW = landMask.width, MH = landMask.height;
+
+    const base = new THREE.IcosahedronGeometry(RADIUS, GEO_DETAIL);
+    const geo = base.toNonIndexed();
+    base.dispose();
+
+    const pos = geo.attributes.position;
+    const faceCount = pos.count / 3;
+    const colorArr = new Float32Array(pos.count * 3);
+
+    for (let f = 0; f < faceCount; f++) {
+      const vi0 = f * 3, vi1 = f * 3 + 1, vi2 = f * 3 + 2;
+      // Face centroid
+      const cx = (pos.getX(vi0) + pos.getX(vi1) + pos.getX(vi2)) / 3;
+      const cy = (pos.getY(vi0) + pos.getY(vi1) + pos.getY(vi2)) / 3;
+      const cz = (pos.getZ(vi0) + pos.getZ(vi1) + pos.getZ(vi2)) / 3;
+      const clen = Math.sqrt(cx * cx + cy * cy + cz * cz);
+      const lat = Math.asin(cy / clen) * 180 / Math.PI;
+      const lng = Math.atan2(cz, -cx) * 180 / Math.PI;
+
+      // Land/ocean: sample centroid + all 3 vertices, majority vote.
+      // Centroid-only misses thin peninsulas like Italy whose face centroids fall in the sea.
+      const samplePoints: [number, number, number][] = [
+        [cx, cy, cz],
+        [pos.getX(vi0), pos.getY(vi0), pos.getZ(vi0)],
+        [pos.getX(vi1), pos.getY(vi1), pos.getZ(vi1)],
+        [pos.getX(vi2), pos.getY(vi2), pos.getZ(vi2)],
+      ];
+      let landVotes = 0;
+      for (const [sx, sy, sz] of samplePoints) {
+        const slen = Math.sqrt(sx * sx + sy * sy + sz * sz);
+        const slat = Math.asin(sy / slen) * 180 / Math.PI;
+        const slng = Math.atan2(sz, -sx) * 180 / Math.PI;
+        const spx = Math.max(0, Math.min(MW - 1, Math.floor(((slng + 180) / 360) * MW)));
+        const spy = Math.max(0, Math.min(MH - 1, Math.floor(((90 - slat) / 180) * MH)));
+        if (maskData.data[(spy * MW + spx) * 4] > 128) landVotes++;
+      }
+      const isLand = landVotes >= 2; // majority of 4 samples
+
+      // Move ALL 3 vertices of this face to the same radius — no slanting, no bleed
+      const targetR = isLand ? RADIUS + EXTRUDE : RADIUS;
+      for (const vi of [vi0, vi1, vi2]) {
+        const vx = pos.getX(vi), vy = pos.getY(vi), vz = pos.getZ(vi);
+        const vlen = Math.sqrt(vx * vx + vy * vy + vz * vz);
+        pos.setX(vi, (vx / vlen) * targetR);
+        pos.setY(vi, (vy / vlen) * targetR);
+        pos.setZ(vi, (vz / vlen) * targetR);
+      }
+
+      // Color from color canvas
+      const cpx = Math.max(0, Math.min(CW - 1, Math.floor(((lng + 180) / 360) * CW)));
+      const cpy = Math.max(0, Math.min(CH - 1, Math.floor(((90 - lat) / 180) * CH)));
+      const ci = (cpy * CW + cpx) * 4;
+      const rc = colorData.data[ci] / 255;
+      const gc = colorData.data[ci + 1] / 255;
+      const bc = colorData.data[ci + 2] / 255;
+      colorArr[vi0 * 3] = rc; colorArr[vi0 * 3 + 1] = gc; colorArr[vi0 * 3 + 2] = bc;
+      colorArr[vi1 * 3] = rc; colorArr[vi1 * 3 + 1] = gc; colorArr[vi1 * 3 + 2] = bc;
+      colorArr[vi2 * 3] = rc; colorArr[vi2 * 3 + 1] = gc; colorArr[vi2 * 3 + 2] = bc;
+    }
+
+    geo.setAttribute("color", new THREE.BufferAttribute(colorArr, 3));
+    geo.attributes.position.needsUpdate = true;
+    geo.computeVertexNormals();
+    return { earthGeo: geo };
   }, []);
 
   // Pull camera back on narrow viewports so globe doesn't clip edges
@@ -475,18 +551,16 @@ function GlobeMesh({ selectedLanguageCode, onLanguageClick, zoomTarget }: GlobeM
         zoomStart.current = clock.getElapsedTime();
         zoomInitialCamPos.current = camera.position.clone();
 
-        // Compute target camera position:
-        // Get the 3D surface position of the target on the globe.
-        // The globe group may have been rotated by user dragging (OrbitControls
-        // moves camera, not group, but just in case), so use unrotated coords.
-        // The flag pins use the same latLngToVec3 and they display correctly,
-        // so we know this function gives the right world position (before group rot).
-        const surfacePos = latLngToVec3(zoomTarget.lat, zoomTarget.lng, RADIUS);
-        // The direction from origin toward that point is where the camera should be.
-        // Place camera along that direction, at our desired zoom distance.
-        const dir = surfacePos.clone().normalize();
+        // Compute target camera position in world space.
+        // The globe group is rotated by GROUP_ROTATION_Y around Y, so we must
+        // apply that same rotation to the local surface position to get world dir.
+        const localPos = latLngToVec3(zoomTarget.lat, zoomTarget.lng, RADIUS);
+        const worldDir = localPos
+          .clone()
+          .normalize()
+          .applyAxisAngle(new THREE.Vector3(0, 1, 0), GROUP_ROTATION_Y);
         const zoomDist = 2.8;
-        zoomTargetCamPos.current = dir.multiplyScalar(zoomDist);
+        zoomTargetCamPos.current = worldDir.multiplyScalar(zoomDist);
       }
 
       const elapsed = clock.getElapsedTime() - zoomStart.current;
@@ -525,19 +599,16 @@ function GlobeMesh({ selectedLanguageCode, onLanguageClick, zoomTarget }: GlobeM
 
   return (
     <>
-      <group ref={groupRef}>
-        {/* Earth — low-poly faceted with raised continents */}
-        <mesh ref={earthRef}>
-          <icosahedronGeometry args={[RADIUS, GEO_DETAIL]} />
+      <group ref={groupRef} rotation={[0, GROUP_ROTATION_Y, 0]}>
+        {/* Earth — vertex colors + manual binary height per face (no displacement map bleed) */}
+        <mesh ref={earthRef} geometry={earthGeo}>
           <meshStandardMaterial
-            map={earthTex}
-            displacementMap={dispTex}
-            displacementScale={EXTRUDE}
+            vertexColors
             flatShading
-            roughness={0.75}
+            roughness={0.72}
             metalness={0.05}
             emissive="#0f172a"
-            emissiveIntensity={0.2}
+            emissiveIntensity={0.15}
           />
         </mesh>
 
@@ -567,8 +638,11 @@ function GlobeMesh({ selectedLanguageCode, onLanguageClick, zoomTarget }: GlobeM
         minPolarAngle={Math.PI * 0.15}
         maxPolarAngle={Math.PI * 0.85}
         enabled={!zoomTarget}
+        autoRotate={autoRotateEnabled && !zoomTarget}
+        autoRotateSpeed={0.6}
         onStart={() => {
           userDragging.current = true;
+          setAutoRotateEnabled(false);
         }}
         onEnd={() => {
           userDragging.current = false;

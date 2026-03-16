@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" width="1200" height="820">
   <defs>
     <filter id="cardShadow" x="-4%" y="-4%" width="108%" height="112%">
       <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#000000" flood-opacity="0.06"/>
@@ -16,7 +16,7 @@
   </defs>
 
   <!-- Background -->
-  <rect width="1200" height="780" fill="#ffffff"/>
+  <rect width="1200" height="820" fill="#ffffff"/>
 
   <!-- Title -->
   <text x="600" y="36" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="20" font-weight="700" fill="#09090b" text-anchor="middle" letter-spacing="4">PATHGLOT — SYSTEM ARCHITECTURE</text>
@@ -25,14 +25,14 @@
   <!-- ═══════════════════════════════════════════ -->
   <!-- BROWSER PANEL                              -->
   <!-- ═══════════════════════════════════════════ -->
-  <rect x="30" y="78" width="320" height="370" rx="12" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" filter="url(#panelShadow)"/>
+  <rect x="30" y="78" width="320" height="430" rx="12" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" filter="url(#panelShadow)"/>
   <rect x="30" y="78" width="320" height="36" rx="12" fill="#fafafa"/>
   <rect x="30" y="102" width="320" height="12" fill="#fafafa"/>
   <line x1="30" y1="114" x2="350" y2="114" stroke="#e4e4e7" stroke-width="1"/>
   <circle cx="52" cy="96" r="4.5" fill="#ef4444" opacity="0.6"/>
   <circle cx="66" cy="96" r="4.5" fill="#f59e0b" opacity="0.6"/>
   <circle cx="80" cy="96" r="4.5" fill="#22c55e" opacity="0.6"/>
-  <text x="220" y="100" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle" font-weight="500">React 18 + Vite + TypeScript</text>
+  <text x="220" y="100" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle" font-weight="500">React 18 + Vite + TypeScript + Tailwind</text>
 
   <!-- Street View -->
   <rect x="46" y="124" width="288" height="68" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
@@ -58,17 +58,27 @@
   <text x="190" y="313" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Globe · Mic · Log · Jarvis HUD</text>
 
   <!-- Web Speech -->
-  <rect x="46" y="340" width="288" height="52" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
-  <text x="190" y="361" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#09090b" text-anchor="middle">Web Speech API</text>
-  <text x="190" y="377" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">User transcript (language-aware)</text>
+  <rect x="46" y="340" width="138" height="52" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
+  <text x="115" y="361" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#09090b" text-anchor="middle">Web Speech API</text>
+  <text x="115" y="377" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">User transcript</text>
+
+  <!-- Canvas Screenshot -->
+  <rect x="196" y="340" width="138" height="52" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
+  <text x="265" y="361" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#09090b" text-anchor="middle">Canvas Capture</text>
+  <text x="265" y="377" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Screenshot → 640×480</text>
+
+  <!-- 3D Globe -->
+  <rect x="46" y="404" width="288" height="44" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
+  <text x="190" y="422" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#09090b" text-anchor="middle">Three.js Globe</text>
+  <text x="190" y="438" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">d3-geo · World Atlas · City markers</text>
 
   <!-- Client label -->
-  <text x="190" y="430" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="9" fill="#a1a1aa" text-anchor="middle" letter-spacing="2" font-weight="600">CLIENT</text>
+  <text x="190" y="490" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="9" fill="#a1a1aa" text-anchor="middle" letter-spacing="2" font-weight="600">CLIENT</text>
 
   <!-- ═══════════════════════════════════════════ -->
   <!-- BACKEND PANEL                              -->
   <!-- ═══════════════════════════════════════════ -->
-  <rect x="420" y="78" width="360" height="530" rx="12" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" filter="url(#panelShadow)"/>
+  <rect x="420" y="78" width="360" height="560" rx="12" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" filter="url(#panelShadow)"/>
   <rect x="420" y="78" width="360" height="36" rx="12" fill="#09090b"/>
   <rect x="420" y="102" width="360" height="12" fill="#09090b"/>
   <text x="600" y="100" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#fafafa" text-anchor="middle" font-weight="500">Python 3.12 · FastAPI</text>
@@ -76,7 +86,7 @@
   <!-- WebSocket relay -->
   <rect x="438" y="124" width="324" height="48" rx="8" fill="#09090b" stroke="#27272a" stroke-width="1"/>
   <text x="600" y="143" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#fafafa" text-anchor="middle">WebSocket Relay  /ws/session</text>
-  <text x="600" y="161" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#a1a1aa" text-anchor="middle">Full-duplex · audio · pos · POV · tools</text>
+  <text x="600" y="161" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#a1a1aa" text-anchor="middle">Full-duplex · audio · pos · POV · screenshots</text>
 
   <!-- Context builder -->
   <rect x="438" y="184" width="155" height="76" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
@@ -103,40 +113,42 @@
   <rect x="605" y="272" width="157" height="76" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
   <text x="683" y="293" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#09090b" text-anchor="middle">Vision Locator</text>
   <text x="683" y="309" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Static SV snapshot</text>
-  <text x="683" y="323" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Flash → (fx, fy)</text>
+  <text x="683" y="323" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">gemini-3-flash → (fx, fy)</text>
   <text x="683" y="337" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">→ heading / pitch</text>
 
-  <!-- Vision identify -->
-  <rect x="438" y="360" width="155" height="60" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
+  <!-- Vision identify (screenshot) -->
+  <rect x="438" y="360" width="155" height="68" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
   <text x="515" y="381" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#09090b" text-anchor="middle">Vision Identify</text>
-  <text x="515" y="397" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">"what is that?" fallback</text>
-  <text x="515" y="411" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">10s throttle</text>
+  <text x="515" y="397" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Canvas screenshot</text>
+  <text x="515" y="411" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">gemini-2.5-flash-lite</text>
+  <text x="515" y="420" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Static SV fallback</text>
 
-  <!-- navigate_to_place -->
-  <rect x="605" y="360" width="157" height="60" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
-  <text x="683" y="381" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#09090b" text-anchor="middle">navigate_to_place</text>
-  <text x="683" y="397" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Gemini-registered tool</text>
-  <text x="683" y="411" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Single tool (stability)</text>
+  <!-- Tools -->
+  <rect x="605" y="360" width="157" height="68" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
+  <text x="683" y="381" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#09090b" text-anchor="middle">Gemini Tools</text>
+  <text x="683" y="397" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">navigate_to_place</text>
+  <text x="683" y="411" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">identify_current_view</text>
+  <text x="683" y="423" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Text Search resolution</text>
 
   <!-- Language config -->
-  <rect x="438" y="432" width="324" height="56" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
-  <text x="600" y="453" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#09090b" text-anchor="middle">Language Config</text>
-  <text x="600" y="469" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Per-language voice, locale, prompt</text>
-  <text x="600" y="483" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">ES · FR · DE · JA · IT · PT</text>
+  <rect x="438" y="440" width="324" height="56" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
+  <text x="600" y="461" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#09090b" text-anchor="middle">Language Config</text>
+  <text x="600" y="477" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Per-language voice, locale, prompt</text>
+  <text x="600" y="491" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">ES · FR · DE · JA · IT · PT</text>
 
   <!-- Two-phase label -->
-  <rect x="438" y="500" width="324" height="68" rx="8" fill="#09090b" stroke="#27272a" stroke-width="1"/>
-  <text x="600" y="521" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#fafafa" text-anchor="middle">Two-Phase Label Placement</text>
-  <text x="600" y="539" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#a1a1aa" text-anchor="middle">① Bearing math → instant label</text>
-  <text x="600" y="555" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#a1a1aa" text-anchor="middle">② Flash vision → pixel-accurate</text>
+  <rect x="438" y="508" width="324" height="68" rx="8" fill="#09090b" stroke="#27272a" stroke-width="1"/>
+  <text x="600" y="529" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#fafafa" text-anchor="middle">Two-Phase Label Placement</text>
+  <text x="600" y="547" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#a1a1aa" text-anchor="middle">① Bearing math → instant label</text>
+  <text x="600" y="563" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#a1a1aa" text-anchor="middle">② Flash vision → pixel-accurate</text>
 
   <!-- Server label -->
-  <text x="600" y="590" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="9" fill="#a1a1aa" text-anchor="middle" letter-spacing="2" font-weight="600">SERVER</text>
+  <text x="600" y="620" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="9" fill="#a1a1aa" text-anchor="middle" letter-spacing="2" font-weight="600">SERVER</text>
 
   <!-- ═══════════════════════════════════════════ -->
   <!-- GCP SERVICES PANEL                         -->
   <!-- ═══════════════════════════════════════════ -->
-  <rect x="854" y="78" width="316" height="530" rx="12" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" filter="url(#panelShadow)"/>
+  <rect x="854" y="78" width="316" height="560" rx="12" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" filter="url(#panelShadow)"/>
   <rect x="854" y="78" width="316" height="36" rx="12" fill="#09090b"/>
   <rect x="854" y="102" width="316" height="12" fill="#09090b"/>
   <text x="1012" y="100" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#fafafa" text-anchor="middle" font-weight="500">Google Cloud Platform</text>
@@ -147,38 +159,41 @@
   <text x="1012" y="166" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="9.5" fill="#a1a1aa" text-anchor="middle">gemini-2.5-flash-native-audio-preview</text>
   <text x="1012" y="182" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#a1a1aa" text-anchor="middle">Bidirectional audio · v1alpha</text>
   <text x="1012" y="198" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Affective dialog · Proactive audio</text>
-  <text x="1012" y="213" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Language lock · Tool calls</text>
+  <text x="1012" y="213" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Language lock · 2 tool calls</text>
 
-  <!-- Gemini Flash -->
-  <rect x="872" y="236" width="280" height="72" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
-  <text x="1012" y="258" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#09090b" text-anchor="middle">Gemini 2.5 Flash</text>
+  <!-- Gemini Flash (locate) -->
+  <rect x="872" y="236" width="280" height="56" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
+  <text x="1012" y="258" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#09090b" text-anchor="middle">gemini-3-flash-preview</text>
   <text x="1012" y="274" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Vision: place locating (fx, fy)</text>
-  <text x="1012" y="288" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Vision: view identification</text>
-  <text x="1012" y="302" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Optional — bearings work without</text>
+  <text x="1012" y="288" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Vision: view identification (fallback)</text>
+
+  <!-- Gemini Flash Lite (screenshot) -->
+  <rect x="872" y="304" width="280" height="48" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
+  <text x="1012" y="324" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#09090b" text-anchor="middle">gemini-2.5-flash-lite</text>
+  <text x="1012" y="342" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Screenshot identification</text>
 
   <!-- Places API -->
-  <rect x="872" y="320" width="280" height="72" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
-  <text x="1012" y="342" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#09090b" text-anchor="middle">Places API (New)</text>
-  <text x="1012" y="358" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Nearby search (200m, 10 results)</text>
-  <text x="1012" y="372" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Text search for nav targets</text>
-  <text x="1012" y="386" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Triggered on movement &gt;30m</text>
+  <rect x="872" y="364" width="280" height="72" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
+  <text x="1012" y="386" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#09090b" text-anchor="middle">Places API (New)</text>
+  <text x="1012" y="402" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Nearby search (200m, 10 results)</text>
+  <text x="1012" y="416" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Text search for nav targets</text>
+  <text x="1012" y="430" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Triggered on movement &gt;30m</text>
 
   <!-- Maps JS API -->
-  <rect x="872" y="404" width="280" height="56" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
-  <text x="1012" y="426" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#09090b" text-anchor="middle">Maps JavaScript API</text>
-  <text x="1012" y="442" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Street View Panorama</text>
-  <text x="1012" y="456" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Static SV for vision snapshots</text>
+  <rect x="872" y="448" width="280" height="56" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
+  <text x="1012" y="470" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#09090b" text-anchor="middle">Maps JavaScript API</text>
+  <text x="1012" y="486" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Street View Panorama</text>
+  <text x="1012" y="500" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Static SV for vision snapshots</text>
 
   <!-- Cloud Run -->
-  <rect x="872" y="472" width="280" height="92" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
-  <text x="1012" y="494" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#09090b" text-anchor="middle">Cloud Run</text>
-  <text x="1012" y="510" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Backend + Frontend containers</text>
-  <text x="1012" y="524" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Secret Manager · Cloud Build</text>
-  <text x="1012" y="538" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Artifact Registry · CI/CD</text>
-  <text x="1012" y="552" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Docker + Docker Compose</text>
+  <rect x="872" y="516" width="280" height="80" rx="8" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"/>
+  <text x="1012" y="538" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#09090b" text-anchor="middle">Cloud Run</text>
+  <text x="1012" y="554" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Backend + Frontend containers</text>
+  <text x="1012" y="568" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#52525b" text-anchor="middle">Secret Manager · Cloud Build</text>
+  <text x="1012" y="582" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#71717a" text-anchor="middle">Docker + Docker Compose</text>
 
   <!-- GCP label -->
-  <text x="1012" y="590" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="9" fill="#a1a1aa" text-anchor="middle" letter-spacing="2" font-weight="600">GOOGLE CLOUD</text>
+  <text x="1012" y="620" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="9" fill="#a1a1aa" text-anchor="middle" letter-spacing="2" font-weight="600">GOOGLE CLOUD</text>
 
   <!-- ═══════════════════════════════════════════ -->
   <!-- ARROWS / CONNECTIONS                       -->
@@ -190,49 +205,62 @@
   <text x="385" y="212" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#09090b" text-anchor="middle" font-weight="500">audio · pos · POV</text>
   <text x="385" y="246" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#71717a" text-anchor="middle" font-weight="500">audio · labels · nav</text>
 
+  <!-- Browser ↔ Backend (screenshots) -->
+  <line x1="350" y1="366" x2="420" y2="380" stroke="#09090b" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowDark)"/>
+  <text x="385" y="364" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#09090b" text-anchor="middle" font-weight="500">screenshot</text>
+
   <!-- Backend → Gemini Live -->
   <line x1="762" y1="206" x2="872" y2="168" stroke="#09090b" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowDark)"/>
   <line x1="872" y1="185" x2="762" y2="224" stroke="#71717a" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowGray)"/>
   <text x="824" y="180" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#09090b" text-anchor="middle" font-weight="500">PCM audio + context</text>
-  <text x="824" y="228" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#71717a" text-anchor="middle" font-weight="500">audio + transcripts</text>
+  <text x="824" y="228" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#71717a" text-anchor="middle" font-weight="500">audio + transcripts + tools</text>
 
   <!-- Backend → Places API -->
-  <line x1="762" y1="358" x2="872" y2="358" stroke="#52525b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowGray)"/>
-  <text x="817" y="352" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#52525b" text-anchor="middle" font-weight="500">query</text>
+  <line x1="762" y1="400" x2="872" y2="400" stroke="#52525b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowGray)"/>
+  <text x="817" y="394" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#52525b" text-anchor="middle" font-weight="500">query</text>
 
-  <!-- Backend → Gemini Flash -->
-  <line x1="762" y1="310" x2="872" y2="276" stroke="#52525b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowGray)"/>
-  <text x="820" y="286" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#52525b" text-anchor="middle" font-weight="500">SV image</text>
+  <!-- Backend → Gemini Flash (locate) -->
+  <line x1="762" y1="310" x2="872" y2="270" stroke="#52525b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowGray)"/>
+  <text x="820" y="282" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#52525b" text-anchor="middle" font-weight="500">SV image</text>
+
+  <!-- Backend → Gemini Flash Lite (screenshot) -->
+  <line x1="762" y1="380" x2="872" y2="330" stroke="#52525b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowGray)"/>
+  <text x="820" y="348" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="8" fill="#52525b" text-anchor="middle" font-weight="500">screenshot</text>
 
   <!-- ═══════════════════════════════════════════ -->
   <!-- BOTTOM LEGEND                              -->
   <!-- ═══════════════════════════════════════════ -->
-  <rect x="30" y="618" width="1140" height="140" rx="10" fill="#fafafa" stroke="#e4e4e7" stroke-width="1" filter="url(#cardShadow)"/>
+  <rect x="30" y="650" width="1140" height="150" rx="10" fill="#fafafa" stroke="#e4e4e7" stroke-width="1" filter="url(#cardShadow)"/>
 
   <!-- Legend -->
-  <text x="54" y="644" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="600" fill="#a1a1aa" letter-spacing="2">LEGEND</text>
+  <text x="54" y="676" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="600" fill="#a1a1aa" letter-spacing="2">LEGEND</text>
 
-  <line x1="54" y1="666" x2="98" y2="666" stroke="#09090b" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="106" y="670" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">Client → Server data</text>
+  <line x1="54" y1="698" x2="98" y2="698" stroke="#09090b" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="106" y="702" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">Client → Server data</text>
 
-  <line x1="54" y1="688" x2="98" y2="688" stroke="#71717a" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="106" y="692" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">Server → Client responses</text>
+  <line x1="54" y1="720" x2="98" y2="720" stroke="#71717a" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="106" y="724" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">Server → Client responses</text>
 
-  <line x1="54" y1="710" x2="98" y2="710" stroke="#52525b" stroke-width="1.5" stroke-dasharray="4,3"/>
-  <text x="106" y="714" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">Google Cloud API calls</text>
+  <line x1="54" y1="742" x2="98" y2="742" stroke="#52525b" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="106" y="746" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">Google Cloud API calls</text>
 
   <!-- Key decisions -->
-  <text x="380" y="644" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="600" fill="#a1a1aa" letter-spacing="2">KEY DECISIONS</text>
-  <text x="380" y="666" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">· No video — text context injection</text>
-  <text x="380" y="684" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">· Single tool — avoids 1008 errors</text>
-  <text x="380" y="702" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">· Two-phase labels — instant + refined</text>
-  <text x="380" y="720" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">· LOW VAD — prevents echo loops</text>
+  <text x="380" y="676" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="600" fill="#a1a1aa" letter-spacing="2">KEY DECISIONS</text>
+  <text x="380" y="698" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">· No video — text context injection</text>
+  <text x="380" y="716" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">· 2 tools — navigate + identify view</text>
+  <text x="380" y="734" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">· Two-phase labels — instant + refined</text>
+  <text x="380" y="752" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">· LOW VAD — prevents echo loops</text>
+  <text x="380" y="770" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">· Screenshot capture for vision ID</text>
 
   <!-- Languages + Cities -->
-  <text x="720" y="644" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="600" fill="#a1a1aa" letter-spacing="2">6 LANGUAGES · 14 CITIES</text>
-  <text x="720" y="666" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">🇪🇸 Madrid · Barcelona · Buenos Aires</text>
-  <text x="720" y="684" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">🇫🇷 Paris · Montmartre · Montréal</text>
-  <text x="720" y="702" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">🇩🇪 Berlin · Vienna  🇯🇵 Tokyo · Osaka</text>
-  <text x="720" y="720" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">🇮🇹 Rome · Florence  🇵🇹 Lisbon · São Paulo</text>
+  <text x="720" y="676" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="600" fill="#a1a1aa" letter-spacing="2">6 LANGUAGES · 14 CITIES</text>
+  <text x="720" y="698" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">🇪🇸 Madrid · Barcelona · Buenos Aires</text>
+  <text x="720" y="716" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">🇫🇷 Paris · Montmartre · Montréal</text>
+  <text x="720" y="734" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">🇩🇪 Berlin · Vienna  🇯🇵 Tokyo · Osaka</text>
+  <text x="720" y="752" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="11" fill="#3f3f46">🇮🇹 Rome · Florence  🇵🇹 Lisbon · São Paulo</text>
+
+  <!-- 3 Gemini Models -->
+  <text x="720" y="780" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="600" fill="#a1a1aa" letter-spacing="2">3 GEMINI MODELS</text>
+  <text x="720" y="794" font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="10" fill="#3f3f46">Live · 3-flash-preview · 2.5-flash-lite</text>
 
 </svg>

@@ -2,6 +2,7 @@ export interface City {
   id: string;
   name: string;
   country: string;
+  description: string; // starting neighborhood / street
   lat: number;
   lng: number;
   heading: number; // initial Street View camera heading (0–360)
@@ -43,7 +44,7 @@ export const LANGUAGES: Language[] = [
         id: "madrid",
         name: "Madrid",
         country: "Spain",
-        // Gran Vía — Madrid's main commercial boulevard
+        description: "Gran Vía",
         lat: 40.4200,
         lng: -3.7027,
         heading: 90,
@@ -53,7 +54,7 @@ export const LANGUAGES: Language[] = [
         id: "barcelona",
         name: "Barcelona",
         country: "Spain",
-        // Passeig de Gràcia — Barcelona's famous modernist boulevard
+        description: "Passeig de Gràcia",
         lat: 41.3917,
         lng: 2.1649,
         heading: 180,
@@ -63,7 +64,7 @@ export const LANGUAGES: Language[] = [
         id: "buenos-aires",
         name: "Buenos Aires",
         country: "Argentina",
-        // Avenida de Mayo — main avenue linking Casa Rosada to Congress
+        description: "Avenida de Mayo",
         lat: -34.6083,
         lng: -58.3712,
         heading: 90,
@@ -82,7 +83,7 @@ export const LANGUAGES: Language[] = [
         id: "paris",
         name: "Paris",
         country: "France",
-        // Avenue des Champs-Élysées — Paris's most famous road, full coverage
+        description: "Champs-Élysées",
         lat: 48.8698,
         lng: 2.3082,
         heading: 270,
@@ -92,7 +93,7 @@ export const LANGUAGES: Language[] = [
         id: "montmartre",
         name: "Montmartre",
         country: "France",
-        // Rue Lepic — the famous winding road up Montmartre hill, well covered
+        description: "Rue Lepic",
         lat: 48.8843,
         lng: 2.3369,
         heading: 150,
@@ -102,7 +103,7 @@ export const LANGUAGES: Language[] = [
         id: "montreal",
         name: "Montréal",
         country: "Canada",
-        // Rue Sainte-Catherine Ouest — main downtown commercial street
+        description: "Rue Sainte-Catherine",
         lat: 45.5080,
         lng: -73.5690,
         heading: 90,
@@ -121,7 +122,7 @@ export const LANGUAGES: Language[] = [
         id: "berlin",
         name: "Berlin",
         country: "Germany",
-        // Unter den Linden — Berlin's most iconic boulevard
+        description: "Unter den Linden",
         lat: 52.5163,
         lng: 13.3777,
         heading: 270,
@@ -131,7 +132,7 @@ export const LANGUAGES: Language[] = [
         id: "vienna",
         name: "Vienna",
         country: "Austria",
-        // Ringstrasse near the State Opera — major boulevard, full coverage
+        description: "Ringstrasse",
         lat: 48.2036,
         lng: 16.3695,
         heading: 90,
@@ -150,7 +151,7 @@ export const LANGUAGES: Language[] = [
         id: "tokyo-shibuya",
         name: "Tokyo (Shibuya)",
         country: "Japan",
-        // Shibuya — on the road approaching the famous crossing
+        description: "Shibuya Crossing",
         lat: 35.6596,
         lng: 139.7006,
         heading: 0,
@@ -160,7 +161,7 @@ export const LANGUAGES: Language[] = [
         id: "osaka",
         name: "Osaka",
         country: "Japan",
-        // Midosuji Avenue — Osaka's main north-south boulevard
+        description: "Midosuji Avenue",
         lat: 34.6789,
         lng: 135.5054,
         heading: 180,
@@ -179,7 +180,7 @@ export const LANGUAGES: Language[] = [
         id: "rome",
         name: "Rome",
         country: "Italy",
-        // Via Labicana — drivable road running past the Colosseum
+        description: "Near the Colosseum",
         lat: 41.8895,
         lng: 12.4968,
         heading: 270,
@@ -189,7 +190,7 @@ export const LANGUAGES: Language[] = [
         id: "florence",
         name: "Florence",
         country: "Italy",
-        // Lungarno Torrigiani — riverside road along the Arno, outside ZTL
+        description: "Arno riverside",
         lat: 43.7678,
         lng: 11.2584,
         heading: 90,
@@ -208,7 +209,7 @@ export const LANGUAGES: Language[] = [
         id: "lisbon",
         name: "Lisbon",
         country: "Portugal",
-        // Avenida da Liberdade — Lisbon's grand central boulevard
+        description: "Av. da Liberdade",
         lat: 38.7165,
         lng: -9.1427,
         heading: 0,
@@ -218,7 +219,7 @@ export const LANGUAGES: Language[] = [
         id: "sao-paulo",
         name: "São Paulo",
         country: "Brazil",
-        // Avenida Paulista — São Paulo's main financial avenue
+        description: "Avenida Paulista",
         lat: -23.5613,
         lng: -46.6565,
         heading: 90,

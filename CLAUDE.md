@@ -25,7 +25,7 @@ docker-compose up
 | Variable | Where to get it |
 |---|---|
 | `GEMINI_API_KEY` | Google AI Studio → API Keys (must be linked to a billing-enabled GCP project for production use; free tier has 20 req/day limit on 2.5 Flash). Optional — if unset, vision-based labeling is disabled but the app still works with bearing-based labels. |
-| `GOOGLE_MAPS_API_KEY` | Google Cloud Console → APIs & Services → Credentials (enable Maps JS API + Places API New) |
+| `GOOGLE_MAPS_API_KEY` | Google Cloud Console → APIs & Services → Credentials (enable Maps JS API + Places API New + Street View Static API) |
 | `GOOGLE_CLOUD_PROJECT` | Your GCP project ID |
 | `CLOUD_RUN_REGION` | Default: `us-central1` |
 
@@ -35,53 +35,62 @@ docker-compose up
 Browser (React + Vite)
   ├── Google Maps Street View Panorama
   ├── Web Audio API (mic capture)
+  ├── Web Speech API (user transcript)
+  ├── Canvas screenshot capture (for vision)
   └── WebSocket → backend
 
 Backend (FastAPI, Cloud Run)
-  ├── WebSocket relay
-  ├── Places API (nearby search on position change >30m)
-  ├── Context manager (injects location + heading direction into Gemini session)
+  ├── WebSocket relay (/ws/session)
+  ├── Places API (nearby search on movement >30m + text search for nav)
+  ├── Context builder (injects location + heading direction into Gemini session)
+  ├── Transcript matcher (accent-normalized scored matching for place labels)
   ├── Vision locator (Static Street View + Gemini Flash for label placement)
-  ├── Vision identify fallback (screenshot + transcript → Gemini Flash for unlisted places)
+  ├── Vision identify (screenshot + Gemini Flash for unknown places)
   └── Gemini Live WebSocket client
 
 Gemini Live API (gemini-2.5-flash-native-audio-preview-12-2025, v1alpha)
+Gemini Flash (gemini-3-flash-preview — vision locate, gemini-2.5-flash-lite — screenshot identify)
 ```
 
 ## Key Design Decisions
 
 - **No video streaming to Gemini** — 1 FPS cap + 2 min session limit makes it unusable. We inject location text context instead.
-- **30m movement threshold** — prevents Places API spam while user pans Street View.
+- **30m movement threshold** — prevents Places API spam while user walks/clicks through Street View.
 - **System prompt language lock** — Gemini will comply ~95% of the time; we can't hard-block at model level.
 - **Verified data only** — agent only speaks to Places API data + landmark knowledge, says "I'm not certain" otherwise.
-- **Single tool only** — Only `navigate_to_place` is registered as a Gemini tool. `highlight_place` was removed because a second tool destabilizes the preview audio model (1008 errors). Place highlighting is now detected from output transcription text via substring matching against cached Places API results.
+- **Two registered tools** — `navigate_to_place` resolves place queries via Text Search API and teleports the user. `identify_current_view` captures a screenshot and sends it to Gemini Flash to identify what the user is looking at (stores, statues, signs, etc. not in Places API).
 - **Two-phase label placement** — When the agent mentions a place, a label appears immediately using bearing math (lat/lng → heading). Then a background Gemini Flash vision call refines the position with pixel-accurate placement. This eliminates the 2-3s delay that previously blocked labels.
-- **Vision identify fallback** — When the agent talks about something not in the Places API (statues, plazas, architectural features), the backend screenshots the user's current view and asks Gemini Flash to identify and locate what the agent is referring to. Throttled to once per 10s. Requires `GEMINI_API_KEY` to be set.
+- **Screenshot-based identification** — When the user asks "what is that?", the backend requests a canvas screenshot from the frontend (actual user view), sends it to Gemini Flash for identification, then injects the answer back into the live session. Falls back to Street View Static API if canvas capture fails (tainted canvas).
 - **Heading context updates** — When the user pans >60°, direction tags ([ahead], [behind], etc.) are re-injected into the Gemini session so the agent always knows what the user is currently looking at. Throttled to once per 5s.
 - **Scored transcript matching** — Place names in agent speech are matched against cached Places API results using accent-normalized, scored matching. Long Google Places names (e.g. "Café X - Restaurante Y") are split on separators so the short name matches properly. Partial word matches require majority coverage to prevent false positives (e.g. "Plaza de Oriente" no longer falsely matches "Café de Oriente").
 - **END_SENSITIVITY_LOW** — Must stay enabled in VAD config. Removing it causes echo-loop garbled language detection.
+- **Affective dialog + proactive audio** — Both enabled via v1alpha API. Makes the guide more emotionally expressive and able to initiate conversation when it has something relevant.
+- **One highlight per agent turn** — Prevents label-jumping when the agent casually lists multiple places. Resets on user speech so follow-ups re-trigger.
 
 ## Frontend Design
 
-**Design philosophy:** Minimal, dark, modern SaaS aesthetic. No gradients, no glass-morphism, no decorative SVGs.
+**Design philosophy:** Minimal, dark, modern SaaS aesthetic. Monochrome zinc palette with white accents.
 
-- **Color palette:** Zinc scale on near-black (#09090b) background. White for primary text and interactive accents. No brand colors — monochrome only.
+- **Color palette:** Zinc scale on near-black (#09090b) background. White for primary text and interactive accents.
 - **Typography:** Inter. Large bold headings with tight tracking, light secondary text in zinc-500.
+- **Styling:** Tailwind CSS.
 - **Landing page layout:**
-  1. Hero section — centered headline ("Walk the streets. Speak the language.") with a 3D interactive globe (Three.js / @react-three/fiber) behind the text showing city markers.
-  2. How-it-works section — three numbered steps with generous whitespace.
-  3. Language & city selection — bordered cards with white highlight on selection, full-width start button.
+  1. Hero section — centered headline ("Walk any street. Speak any language.") with a 3D interactive globe (Three.js / @react-three/fiber) behind the text showing city markers.
+  2. Language selection — flag buttons at bottom of hero, scrolls to city picker on click.
+  3. City selection — bordered cards with white highlight on selection, full-width start button.
   4. Footer — subtle, minimal.
-- **Globe component:** Uses `@react-three/fiber` + `@react-three/drei`. Fibonacci-distributed dots on a sphere, city markers with interactive hover/click, slow auto-rotation. Located in `Globe.tsx`.
-- **Session view:** Dark top bar, Street View fills viewport, white mic button, zinc sidebar for transcript.
-- **Key components:** `LandingPage.tsx` (landing + selection), `Globe.tsx` (3D globe), `StreetView.tsx`, `MicButton.tsx`, `ConversationLog.tsx`.
+- **Globe component:** Uses `@react-three/fiber` + `@react-three/drei`. Country outlines via d3-geo/world-atlas with FIFA flags overlaid. City markers with interactive hover/click. Located in `Globe.tsx`.
+- **Session view:** Dark top bar with connection status pill, Street View fills viewport, white mic button, Jarvis HUD for floating transcript overlay, optional sidebar conversation log.
+- **Jarvis HUD:** Floating message bubbles in bottom-left corner with enter/fade lifecycle. Shows last 2 messages. Auto-fades after 6s.
+- **Key components:** `LandingPage.tsx` (landing + selection), `Globe.tsx` (3D globe), `StreetView.tsx` (maps + label overlay), `MicButton.tsx`, `ConversationLog.tsx` (sidebar), `JarvisHUD.tsx` (floating HUD).
 
 ## Audio Pipeline
 
 - Capture: `getUserMedia` at device rate (44.1/48kHz)
-- Resample: downsample to 16kHz
-- Send: base64 PCM chunks (20-40ms) via WebSocket
-- Response: 24kHz PCM from Gemini → playback via AudioContext
+- AudioContext created at 16kHz (browser handles high-quality resampling)
+- Send: base64 PCM chunks (4096 frames = 256ms) via WebSocket
+- Response: 24kHz PCM from Gemini → gapless playback via AudioContext
+- Echo cancellation via browser's built-in `echoCancellation` constraint
 
 ## Deploy
 
