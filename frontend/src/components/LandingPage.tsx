@@ -30,7 +30,7 @@ export function LandingPage({ onStart }: Props) {
     setZoomTarget({ lat: selectedCity.lat, lng: selectedCity.lng });
     setTimeout(() => {
       onStart(selectedLanguage.code, selectedCity.id, guideName);
-    }, 1200);
+    }, 1300);
   }
 
   return (

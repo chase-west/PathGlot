@@ -466,7 +466,6 @@ function GlobeMesh({ selectedLanguageCode, onLanguageClick, zoomTarget }: GlobeM
   const groupRef = useRef<THREE.Group>(null);
   const earthRef = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
-  const userDragging = useRef(false);
   const [autoRotateEnabled, setAutoRotateEnabled] = useState(true);
 
   // Disable raycasting on earth mesh so flags can be clicked
@@ -575,10 +574,6 @@ function GlobeMesh({ selectedLanguageCode, onLanguageClick, zoomTarget }: GlobeM
       if (zoomStart.current === null) {
         zoomStart.current = clock.getElapsedTime();
         zoomInitialCamPos.current = camera.position.clone();
-
-        // Compute target camera position in world space.
-        // The globe group is rotated by GROUP_ROTATION_Y around Y, so we must
-        // apply that same rotation to the local surface position to get world dir.
         const localPos = latLngToVec3(zoomTarget.lat, zoomTarget.lng, RADIUS);
         const worldDir = localPos
           .clone()
@@ -589,33 +584,18 @@ function GlobeMesh({ selectedLanguageCode, onLanguageClick, zoomTarget }: GlobeM
       }
 
       const elapsed = clock.getElapsedTime() - zoomStart.current;
-      const duration = 1.2;
-      const t = Math.min(elapsed / duration, 1);
-      const ease = 1 - Math.pow(1 - t, 3); // cubic ease-out
+      const t = Math.min(elapsed / 1.2, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
 
-      // Spherical interpolation from initial camera pos to target camera pos
-      // This creates a smooth arc rather than a linear cut-through-the-globe path
       const startDir = zoomInitialCamPos.current.clone().normalize();
       const endDir = zoomTargetCamPos.current.clone().normalize();
+      const qStart = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), startDir);
+      const qEnd = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), endDir);
+      const currentDir = new THREE.Vector3(0, 0, 1).applyQuaternion(qStart.clone().slerp(qEnd, ease));
 
-      // Slerp the direction
-      const qStart = new THREE.Quaternion().setFromUnitVectors(
-        new THREE.Vector3(0, 0, 1),
-        startDir
-      );
-      const qEnd = new THREE.Quaternion().setFromUnitVectors(
-        new THREE.Vector3(0, 0, 1),
-        endDir
-      );
-      const qCurrent = qStart.clone().slerp(qEnd, ease);
-      const currentDir = new THREE.Vector3(0, 0, 1).applyQuaternion(qCurrent);
-
-      // Lerp the distance
       const startDist = zoomInitialCamPos.current.length();
       const endDist = zoomTargetCamPos.current.length();
-      const currentDist = startDist + (endDist - startDist) * ease;
-
-      camera.position.copy(currentDir.multiplyScalar(currentDist));
+      camera.position.copy(currentDir.multiplyScalar(startDist + (endDist - startDist) * ease));
       camera.lookAt(0, 0, 0);
     } else {
       zoomStart.current = null;
@@ -665,13 +645,7 @@ function GlobeMesh({ selectedLanguageCode, onLanguageClick, zoomTarget }: GlobeM
         enabled={!zoomTarget}
         autoRotate={autoRotateEnabled && !zoomTarget}
         autoRotateSpeed={0.6}
-        onStart={() => {
-          userDragging.current = true;
-          setAutoRotateEnabled(false);
-        }}
-        onEnd={() => {
-          userDragging.current = false;
-        }}
+        onStart={() => setAutoRotateEnabled(false)}
       />
     </>
   );
@@ -694,8 +668,13 @@ export function Globe({
   className = "",
   style,
 }: GlobeProps) {
+  // Expand to fullscreen during zoom so the sphere isn't clipped by the container boundary
+  const containerStyle: React.CSSProperties = zoomTarget
+    ? { position: "fixed", inset: 0, zIndex: 5 }
+    : { width: "100%", height: "100%", ...style };
+
   return (
-    <div className={className} style={{ width: "100%", height: "100%", ...style }}>
+    <div className={zoomTarget ? "" : className} style={containerStyle}>
       <Canvas
         camera={{ position: [0, 0, 5.0], fov: 45 }}
         style={{ background: "transparent", touchAction: "none" }}
