@@ -22,15 +22,23 @@ interface Props {
   city: City;
   onPositionChange?: (position: StreetViewPosition) => void;
   onPovChange?: (pov: StreetViewPov) => void;
+  onLoad?: () => void;
   highlight?: HighlightInfo | null;
 }
 
-export const StreetView = forwardRef<StreetViewHandle, Props>(function StreetView({ city, onPositionChange, onPovChange, highlight }, ref) {
+export const StreetView = forwardRef<StreetViewHandle, Props>(function StreetView({ city, onPositionChange, onPovChange, onLoad, highlight }, ref) {
   const { containerRef, isLoaded, error, moveTo, lookAt, panorama } = useStreetView({
     city,
     onPositionChange,
     onPovChange,
   });
+
+  const onLoadRef = useRef(onLoad);
+  useEffect(() => { onLoadRef.current = onLoad; }, [onLoad]);
+
+  useEffect(() => {
+    if (isLoaded) onLoadRef.current?.();
+  }, [isLoaded]);
   const labelRef = useRef<HTMLDivElement>(null);
 
   // Capture a screenshot of the Street View canvas (what the user actually sees)

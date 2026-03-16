@@ -18,6 +18,7 @@ export default function App() {
   const [config, setConfig] = useState<SessionConfig | null>(null);
   const [showLog, setShowLog] = useState(false);
   const [enteringSession, setEnteringSession] = useState(false);
+  const [streetViewLoaded, setStreetViewLoaded] = useState(false);
 
   // Derived from config
   const language: Language | undefined = config
@@ -84,16 +85,17 @@ export default function App() {
     guideName: string
   ) {
     setEnteringSession(true);
+    setStreetViewLoaded(false);
     setConfig({ languageCode, cityId, guideName });
     // Fade out the black overlay after session loads
     setTimeout(() => setEnteringSession(false), 1500);
   }
 
-  // Auto-connect to Gemini and start mic when entering session
+  // Auto-connect to Gemini and start mic once Street View has loaded
   const autoConnectConfigRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!config) {
-      autoConnectConfigRef.current = null;
+    if (!config || !streetViewLoaded) {
+      if (!config) autoConnectConfigRef.current = null;
       return;
     }
     const configKey = `${config.languageCode}:${config.cityId}:${config.guideName}`;
@@ -110,12 +112,13 @@ export default function App() {
         }
       });
     }
-  }, [config, session.status]);
+  }, [config, streetViewLoaded, session.status]);
 
   function handleEnd() {
     session.disconnect();
     setConfig(null);
     setShowLog(false);
+    setStreetViewLoaded(false);
     lastSentPositionRef.current = null;
   }
 
@@ -201,7 +204,7 @@ export default function App() {
       {/* Main content */}
       <div className="flex-1 relative overflow-hidden">
         {/* Street View */}
-        <StreetView ref={streetViewRef} city={city} onPositionChange={handlePositionChange} onPovChange={handlePovChange} highlight={session.activeHighlight} />
+        <StreetView ref={streetViewRef} city={city} onPositionChange={handlePositionChange} onPovChange={handlePovChange} onLoad={() => setStreetViewLoaded(true)} highlight={session.activeHighlight} />
 
         {/* Jarvis HUD — floating transcript overlay */}
         <JarvisHUD transcript={session.transcript} />
