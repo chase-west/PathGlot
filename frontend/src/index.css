@@ -80,6 +80,17 @@
   transform-origin: top;
 }
 
+/* ── Globe zoom enter ── */
+
+.globe-zoom-enter {
+  animation: globeZoomEnter 0.25s ease-out forwards;
+}
+
+@keyframes globeZoomEnter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* ── GTA transition ── */
 
 .gta-transition {
@@ -88,12 +99,12 @@
   z-index: 1000;
   pointer-events: none;
   background: black;
-  animation: gtaZoom 1.3s ease-in forwards;
+  animation: gtaZoom 2s ease-in forwards;
 }
 
 @keyframes gtaZoom {
   0%   { opacity: 0; }
-  25%  { opacity: 0; }
+  50%  { opacity: 0; }
   100% { opacity: 1; }
 }
 

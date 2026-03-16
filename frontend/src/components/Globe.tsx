@@ -579,12 +579,12 @@ function GlobeMesh({ selectedLanguageCode, onLanguageClick, zoomTarget }: GlobeM
           .clone()
           .normalize()
           .applyAxisAngle(new THREE.Vector3(0, 1, 0), GROUP_ROTATION_Y);
-        const zoomDist = 2.8;
+        const zoomDist = 3.0;
         zoomTargetCamPos.current = worldDir.multiplyScalar(zoomDist);
       }
 
       const elapsed = clock.getElapsedTime() - zoomStart.current;
-      const t = Math.min(elapsed / 1.2, 1);
+      const t = Math.min(elapsed / 2.0, 1);
       const ease = 1 - Math.pow(1 - t, 3);
 
       const startDir = zoomInitialCamPos.current.clone().normalize();
@@ -670,14 +670,14 @@ export function Globe({
 }: GlobeProps) {
   // Expand to fullscreen during zoom so the sphere isn't clipped by the container boundary
   const containerStyle: React.CSSProperties = zoomTarget
-    ? { position: "fixed", inset: 0, zIndex: 5 }
+    ? { position: "fixed", inset: 0, zIndex: 60 }
     : { width: "100%", height: "100%", ...style };
 
   return (
-    <div className={zoomTarget ? "" : className} style={containerStyle}>
+    <div className={zoomTarget ? "globe-zoom-enter" : className} style={containerStyle}>
       <Canvas
         camera={{ position: [0, 0, 5.0], fov: 45 }}
-        style={{ background: "transparent", touchAction: "none" }}
+        style={{ background: zoomTarget ? "#09090b" : "transparent", touchAction: "none" }}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         dpr={[1, 2]}
       >

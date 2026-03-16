@@ -27,10 +27,18 @@ export function LandingPage({ onStart }: Props) {
 
   function handleStart() {
     if (!selectedLanguage || !selectedCity) return;
+    // Lock scroll before state update so layout reflow can't move the viewport
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
     setZoomTarget({ lat: selectedCity.lat, lng: selectedCity.lng });
     setTimeout(() => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
       onStart(selectedLanguage.code, selectedCity.id, guideName);
-    }, 1300);
+    }, 2000);
   }
 
   return (
@@ -104,8 +112,8 @@ export function LandingPage({ onStart }: Props) {
       </section>
 
       {/* City selection — only when language picked */}
-      {selectedLanguage && !zoomTarget && (
-        <section ref={selectionRef} className="px-6 pb-20 pt-8 animate-fade-in">
+      {selectedLanguage && (
+        <section ref={selectionRef} className={`px-6 pb-20 pt-8 animate-fade-in ${zoomTarget ? "invisible" : ""}`}>
           <div className="max-w-lg mx-auto">
             <div className="flex items-center gap-3 mb-6">
               <span className="text-base">{selectedLanguage.flag}</span>
