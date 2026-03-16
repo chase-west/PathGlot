@@ -226,6 +226,45 @@ export const LANGUAGES: Language[] = [
       },
     ],
   },
+  {
+    code: "en",
+    name: "English",
+    nativeName: "English",
+    flag: "🇺🇸",
+    guideNames: ["Jake", "Emily"],
+    cities: [
+      {
+        id: "new-york",
+        name: "New York City",
+        country: "United States",
+        // Broadway — Manhattan's iconic diagonal avenue through Times Square
+        lat: 40.7580,
+        lng: -73.9855,
+        heading: 180,
+        pitch: 0,
+      },
+      {
+        id: "los-angeles",
+        name: "Los Angeles",
+        country: "United States",
+        // Hollywood Boulevard — LA's famous Walk of Fame strip
+        lat: 34.1016,
+        lng: -118.3267,
+        heading: 90,
+        pitch: 0,
+      },
+      {
+        id: "chicago",
+        name: "Chicago",
+        country: "United States",
+        // Michigan Avenue — the Magnificent Mile, Chicago's main boulevard
+        lat: 41.8943,
+        lng: -87.6249,
+        heading: 180,
+        pitch: 0,
+      },
+    ],
+  },
 ];
 
 export function getLanguage(code: string): Language | undefined {

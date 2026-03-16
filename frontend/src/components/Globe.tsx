@@ -21,6 +21,7 @@ const COUNTRY_LANG: Record<string, string> = {
   "392": "ja", // Japan
   "380": "it", // Italy
   "620": "pt", // Portugal
+  "840": "en", // United States
 };
 
 // Vibrant country fills — saturated for the supported countries
@@ -31,6 +32,7 @@ const LANG_FILL: Record<string, string> = {
   ja: "#f43f5e",
   it: "#14b8a6",
   pt: "#a855f7",
+  en: "#f97316",
 };
 
 // Glow border color for supported countries
@@ -41,6 +43,7 @@ const LANG_STROKE: Record<string, string> = {
   ja: "#fda4af",
   it: "#5eead4",
   pt: "#c4b5fd",
+  en: "#fdba74",
 };
 
 // Flag positions — spread apart, staggered heights
@@ -56,6 +59,7 @@ const FLAG_PINS: Array<{
   { code: "ja", lat: 36, lng: 138, poleH: 0.40 },
   { code: "it", lat: 42, lng: 13, poleH: 0.35 },
   { code: "pt", lat: 39, lng: -9, poleH: 0.33 },
+  { code: "en", lat: 40, lng: -100, poleH: 0.44 },
 ];
 
 // ── Coordinate helpers ──
@@ -241,6 +245,27 @@ function createFlagTex(code: string): THREE.CanvasTexture {
       ctx.arc(60, 50, 16, 0, Math.PI * 2);
       ctx.fill();
       break;
+    case "en": {
+      // US flag — simplified stripes + blue canton
+      const stripeH = 100 / 13;
+      for (let i = 0; i < 13; i++) {
+        ctx.fillStyle = i % 2 === 0 ? "#b22234" : "#ffffff";
+        ctx.fillRect(0, i * stripeH, 150, stripeH);
+      }
+      // Blue canton
+      ctx.fillStyle = "#3c3b6e";
+      ctx.fillRect(0, 0, 60, 54);
+      // Stars (simplified grid of dots)
+      ctx.fillStyle = "#ffffff";
+      for (let row = 0; row < 5; row++) {
+        for (let col = 0; col < 6; col++) {
+          ctx.beginPath();
+          ctx.arc(5 + col * 10, 5 + row * 10, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      break;
+    }
   }
 
   const t = new THREE.CanvasTexture(c);
