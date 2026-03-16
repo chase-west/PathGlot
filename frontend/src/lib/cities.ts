@@ -238,7 +238,7 @@ export const LANGUAGES: Language[] = [
         id: "new-york",
         name: "New York City",
         country: "United States",
-        // Broadway — Manhattan's iconic diagonal avenue through Times Square
+        description: "Broadway, Times Square",
         lat: 40.7580,
         lng: -73.9855,
         heading: 180,
@@ -248,7 +248,7 @@ export const LANGUAGES: Language[] = [
         id: "los-angeles",
         name: "Los Angeles",
         country: "United States",
-        // Hollywood Boulevard — LA's famous Walk of Fame strip
+        description: "Hollywood Boulevard",
         lat: 34.1016,
         lng: -118.3267,
         heading: 90,
@@ -258,7 +258,7 @@ export const LANGUAGES: Language[] = [
         id: "chicago",
         name: "Chicago",
         country: "United States",
-        // Michigan Avenue — the Magnificent Mile, Chicago's main boulevard
+        description: "Michigan Avenue, the Magnificent Mile",
         lat: 41.8943,
         lng: -87.6249,
         heading: 180,
