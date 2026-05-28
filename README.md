@@ -2,7 +2,7 @@
 
 **Walk the streets of a foreign city. Your AI guide speaks only in the local language.**
 
-PathGlot drops you into Google Street View while a Gemini Live voice agent acts as your personal tour guide — narrating landmarks, answering questions, and navigating the city, all in the language you're learning. Move through the streets and your guide dynamically references the real places around you in real time.
+PathGlot drops you into Google Street View with a Gemini Live voice agent acting as your tour guide. It narrates landmarks, answers your questions, and navigates the city for you, all in the language you're trying to learn. As you move around, the guide keeps up and talks about the actual places near you in real time.
 
 > Built for the **[Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/)** · Category: **Live Agents**
 > `#GeminiLiveAgentChallenge`
@@ -21,29 +21,29 @@ PathGlot drops you into Google Street View while a Gemini Live voice agent acts 
 
 **How it works:**
 
-1. You walk through a foreign city in Google Street View
-2. Your mic audio streams live to the backend at 16 kHz
-3. The backend relays audio to **Gemini Live API** (native audio, v1alpha) with injected location context from the **Google Places API**
-4. Gemini responds in the target language — narrating the real places around you
-5. When Gemini mentions a place, a label appears on screen instantly (bearing math), then refines to pixel-accurate position via a background **Gemini Flash** vision call
-6. If you ask "what is that?" — the `identify_current_view` tool captures a screenshot from your browser, sends it to **Gemini Flash** for identification, then injects the answer into the live session
-7. Heading changes >60° trigger context re-injection so the agent always knows what direction you're facing
+1. You walk through a foreign city in Google Street View.
+2. Your mic audio streams to the backend at 16 kHz.
+3. The backend passes that audio to the **Gemini Live API** (native audio, v1alpha) along with location context pulled from the **Google Places API**.
+4. Gemini talks back in the target language, narrating the real places around you.
+5. When it mentions a place, a label pops up on screen right away using bearing math, then a background **Gemini Flash** vision call nudges it to the pixel-accurate spot.
+6. Ask "what is that?" and the `identify_current_view` tool grabs a screenshot from your browser, sends it to **Gemini Flash** to figure out what you're looking at, and feeds the answer back into the live session.
+7. Turn your head more than 60° and the agent gets fresh context, so it always knows which way you're facing.
 
 ---
 
 ## Features
 
-- **Real-time voice conversation** — full-duplex audio via Gemini Live API, interruptible at any time
-- **Grounded in real data** — agent only discusses verified Google Places data; says "I'm not certain" instead of hallucinating
-- **Two registered tools** — `navigate_to_place` (teleport to a place) and `identify_current_view` (screenshot-based identification)
-- **Two-phase place labels** — instant bearing-based labels, refined to pixel accuracy by Gemini Flash vision
-- **Screenshot-based identification** — captures the actual browser canvas when the user asks "what is that?"
-- **Dynamic context** — location and heading re-injected automatically as you move and pan
-- **6 languages × 14 cities** — Spanish, French, German, Japanese, Italian, Portuguese
-- **No video streaming** — structured text context injection is more reliable than Gemini's 1 FPS video cap
-- **3D interactive globe** — Three.js city selector on the landing page with country outlines and flag overlays
-- **Affective dialog** — emotion-aware, more human-like guide responses via v1alpha API
-- **Jarvis HUD** — floating transcript overlay with auto-fade lifecycle
+- **Real-time voice conversation.** Full-duplex audio over the Gemini Live API. Cut it off any time.
+- **Grounded in real data.** The agent sticks to verified Google Places data and says "I'm not certain" instead of making things up.
+- **Two tools.** `navigate_to_place` teleports you somewhere, `identify_current_view` figures out what's on screen from a screenshot.
+- **Two-phase place labels.** Instant bearing-based labels first, then Gemini Flash vision tightens up the position.
+- **Screenshot-based identification.** Captures the actual browser canvas when you ask what something is.
+- **Dynamic context.** Location and heading get re-sent automatically as you move and pan around.
+- **6 languages, 14 cities.** Spanish, French, German, Japanese, Italian, and Portuguese.
+- **No video streaming.** Sending structured text context turned out to be more reliable than Gemini's 1 FPS video cap.
+- **3D interactive globe.** A Three.js city picker on the landing page with country outlines and flags.
+- **Affective dialog.** Emotion-aware responses through the v1alpha API, so the guide sounds less robotic.
+- **Jarvis HUD.** A floating transcript overlay that fades itself out.
 
 ---
 
@@ -68,13 +68,13 @@ PathGlot drops you into Google Street View while a Gemini Live voice agent acts 
 | Styling | Tailwind CSS |
 | 3D Globe | Three.js + React Three Fiber + d3-geo |
 | Maps | Google Maps JavaScript API |
-| Audio | Web Audio API (16 kHz capture · 24 kHz playback) |
+| Audio | Web Audio API (16 kHz capture, 24 kHz playback) |
 | User Transcription | Web Speech API (language-aware) |
 | Backend | Python 3.12 + FastAPI |
-| AI (voice) | Gemini Live API — `gemini-2.5-flash-native-audio-preview-12-2025` (v1alpha) |
-| AI (vision locate) | `gemini-3-flash-preview` — place locating in Street View images |
-| AI (vision identify) | `gemini-2.5-flash-lite` — screenshot identification |
-| Places | Google Places API (New) — nearby search + text search |
+| AI (voice) | Gemini Live API, `gemini-2.5-flash-native-audio-preview-12-2025` (v1alpha) |
+| AI (vision locate) | `gemini-3-flash-preview`, place locating in Street View images |
+| AI (vision identify) | `gemini-2.5-flash-lite`, screenshot identification |
+| Places | Google Places API (New), nearby search + text search |
 | Hosting | Google Cloud Run (backend + frontend) |
 | CI/CD | Cloud Build + Artifact Registry + Secret Manager |
 | Containers | Docker + Docker Compose |
@@ -86,12 +86,12 @@ PathGlot drops you into Google Street View while a Gemini Live voice agent acts 
 ### Prerequisites
 
 - Docker + Docker Compose
-- A Gemini API key — [Google AI Studio](https://aistudio.google.com) → API Keys
-- A Google Maps API key — [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials
+- A Gemini API key from [Google AI Studio](https://aistudio.google.com) (API Keys)
+- A Google Maps API key from [Google Cloud Console](https://console.cloud.google.com) (APIs & Services, Credentials)
 
 ### Required Google Cloud APIs
 
-Enable these in your GCP project:
+Turn these on in your GCP project:
 
 - Maps JavaScript API
 - Places API (New)
@@ -120,7 +120,7 @@ docker-compose up
 
 Open **http://localhost:5173**
 
-> **Note:** `GEMINI_API_KEY` is optional for local dev — the app works with bearing-based place labels even without it. Vision-refined labels and "what is that?" identification require it.
+> **Note:** `GEMINI_API_KEY` is optional for local dev. The app still works with bearing-based place labels without it. You only need it for vision-refined labels and the "what is that?" identification.
 
 ---
 
@@ -131,13 +131,13 @@ chmod +x backend/deploy/deploy.sh
 ./backend/deploy/deploy.sh
 ```
 
-This script:
-1. Creates an Artifact Registry repository
-2. Builds and pushes Docker images for backend + frontend
-3. Deploys both services to Cloud Run (us-central1)
-4. Passes API keys directly as environment variables
+The script:
+1. Creates an Artifact Registry repository.
+2. Builds and pushes Docker images for the backend and frontend.
+3. Deploys both services to Cloud Run (us-central1).
+4. Passes API keys in as environment variables.
 
-Alternatively, use Cloud Build for CI/CD (reads API keys from Secret Manager):
+If you'd rather run it through Cloud Build for CI/CD (it reads API keys from Secret Manager):
 
 ```bash
 gcloud builds submit --config=backend/deploy/cloudbuild.yaml \
@@ -150,15 +150,15 @@ gcloud builds submit --config=backend/deploy/cloudbuild.yaml \
 
 | Test | Expected |
 |---|---|
-| Select Spanish + Madrid → allow mic → walk Street View | Hear AI narrating in Spanish |
-| Speak English to the guide | Agent redirects the conversation back in Spanish |
-| Move >30m | Agent references new neighborhood within next response |
+| Select Spanish + Madrid, allow mic, walk Street View | Hear AI narrating in Spanish |
+| Speak English to the guide | Agent steers the conversation back to Spanish |
+| Move >30m | Agent references the new neighborhood in its next response |
 | 10+ minute session | No drops or degradation |
-| Agent mentions a place | Label appears instantly, then refines position |
-| Ask "what is that?" while looking at something | `identify_current_view` fires; agent identifies and labels it |
+| Agent mentions a place | Label shows up right away, then the position refines |
+| Ask "what is that?" while looking at something | `identify_current_view` fires, agent identifies and labels it |
 | Agent mentions something not in Places API (statue, plaza) | Vision fallback labels it |
-| Pan camera >60° | Agent's direction references update to match new view |
-| No `GEMINI_API_KEY` set | App works with bearing-based labels; no vision errors |
+| Pan camera >60° | Agent's direction references catch up to the new view |
+| No `GEMINI_API_KEY` set | App works with bearing-based labels, no vision errors |
 
 ---
 
@@ -169,9 +169,9 @@ pathglot/
 ├── backend/
 │   ├── main.py              # FastAPI app, WebSocket handler, session logic
 │   ├── gemini_client.py     # Gemini Live API client (audio relay, tool calls)
-│   ├── places_client.py     # Google Places API (New) — nearby + text search
+│   ├── places_client.py     # Google Places API (New): nearby + text search
 │   ├── context_builder.py   # Location/heading context injection
-│   ├── vision_locate.py     # Gemini Flash vision — place locating + identification
+│   ├── vision_locate.py     # Gemini Flash vision: place locating + identification
 │   ├── language_config.py   # Per-language voices, prompts, guide names
 │   ├── requirements.txt     # Python dependencies
 │   ├── Dockerfile           # Backend container
@@ -186,7 +186,7 @@ pathglot/
 │   ├── tailwind.config.js   # Tailwind configuration
 │   ├── vite.config.ts       # Vite build config
 │   └── src/
-│       ├── App.tsx           # Root — session management, routing
+│       ├── App.tsx           # Root: session management, routing
 │       ├── main.tsx          # React entry point
 │       ├── index.css         # Global styles (HUD, animations, transitions)
 │       ├── components/
@@ -215,16 +215,16 @@ pathglot/
 
 ## Key Design Decisions
 
-**No video streaming to Gemini** — The Live API's 1 FPS video cap and ~2 min session limit makes it unusable for Street View. We inject structured location + heading context instead, achieving the same result far more reliably.
+**No video streaming to Gemini.** The Live API's 1 FPS video cap and roughly 2 minute session limit made it a non-starter for Street View. We inject structured location and heading context instead, which gets the same result and holds up way better.
 
-**Two registered tools** — `navigate_to_place` teleports the user in Street View using Places Text Search. `identify_current_view` captures the user's actual browser canvas and sends it to Gemini Flash for identification. Both tools return structured responses that the agent incorporates into conversation.
+**Two tools.** `navigate_to_place` teleports you in Street View using Places Text Search. `identify_current_view` grabs your actual browser canvas and hands it to Gemini Flash to identify. Both return structured responses the agent works into the conversation.
 
-**Two-phase label placement** — A label appears immediately using bearing math (lat/lng → heading) when the agent first mentions a place. A background Gemini Flash vision call then refines the position to pixel accuracy. This eliminates the 2–3s delay that previously blocked labels from showing at all.
+**Two-phase label placement.** A label shows up the moment the agent names a place, positioned with bearing math (lat/lng to heading). A background Gemini Flash vision call then refines it to pixel accuracy. This got rid of the 2 to 3 second delay that used to keep labels from showing at all.
 
-**Screenshot-based vision** — When the user asks "what is that?", the backend requests a canvas capture from the frontend via WebSocket, preserving WebGL drawing buffers. Falls back to the Street View Static API if the canvas is tainted by cross-origin tiles.
+**Screenshot-based vision.** When you ask "what is that?", the backend asks the frontend for a canvas capture over WebSocket, preserving the WebGL drawing buffers. If the canvas is tainted by cross-origin tiles, it falls back to the Street View Static API.
 
-**END_SENSITIVITY_LOW** — Must stay enabled in the VAD config. Removing it causes an echo-loop that breaks language detection entirely.
+**END_SENSITIVITY_LOW.** Leave this on in the VAD config. Take it out and you get an echo-loop that wrecks language detection.
 
-**Verified data only** — The agent only speaks to Places API data and known landmark knowledge. It says "I'm not certain" rather than hallucinating.
+**Verified data only.** The agent only talks about Places API data and landmarks it actually knows. Otherwise it says "I'm not certain" rather than guessing.
 
-**Affective dialog + proactive audio** — Enabled via v1alpha API. The guide is emotionally expressive and can initiate conversation when something interesting is visible.
+**Affective dialog + proactive audio.** Both on via the v1alpha API. The guide gets more expressive and can speak up on its own when there's something worth pointing out.
